@@ -1,0 +1,1 @@
+Looking at the diff, this is a deletion diff that removes the entire `CanonicalLogin.tsx` file. Since the original file content is empty and the diff shows removing all 440 lines of the file, the result after applying this diff would be an empty file.
