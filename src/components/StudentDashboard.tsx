@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { getInstructorCoursesForStudent } from "../lib/api/courses";
 
 interface Student {
   id: string;
@@ -196,13 +197,17 @@ export default function StudentDashboard({
   const { signOutUser, isSigningOut } = useAuth();
   const [activeView, setActiveView] = useState("courses");
   const [selectedCommunity, setSelectedCommunity] = useState<number | null>(null);
-  const [communityTab, setCommunityTab] = useState<'announcements' | 'discussions' | 'chat'>('announcements');
+  const [communityTab, setCommunityTab] = useState<'announcements' | 'discussions' | 'browse-courses' | 'chat'>('announcements');
   const [progress, setProgress] = useState({
     coursesEnrolled: 0,
     coursesCompleted: 0,
     totalHours: 0,
     currentStreak: 0,
   });
+
+  // NEW: State for available courses
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
   // Fallback student data if not provided
   const student = studentData || {
@@ -217,7 +222,11 @@ export default function StudentDashboard({
   useEffect(() => {
     // Load student progress
     loadStudentProgress();
-  }, []);
+    // Load available courses when community view is opened
+    if (activeView === "community") {
+      loadAvailableCourses();
+    }
+  }, [activeView]);
 
   const loadStudentProgress = async () => {
     try {
@@ -231,6 +240,19 @@ export default function StudentDashboard({
       });
     } catch (error) {
       console.error("Error loading progress:", error);
+    }
+  };
+
+  // NEW: Function to load available courses
+  const loadAvailableCourses = async () => {
+    setIsLoadingCourses(true);
+    try {
+      const courses = await getInstructorCoursesForStudent();
+      setAvailableCourses(courses);
+    } catch (error) {
+      console.error('Error loading available courses:', error);
+    } finally {
+      setIsLoadingCourses(false);
     }
   };
 
@@ -817,11 +839,12 @@ export default function StudentDashboard({
                               {[
                                 { id: 'announcements', label: 'Announcements', icon: Bell },
                                 { id: 'discussions', label: 'Discussions', icon: MessageCircle },
+                                { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen }, // NEW TAB
                                 { id: 'chat', label: 'Live Chat', icon: Users }
                               ].map((tab) => (
                                 <button
                                   key={tab.id}
-                                  onClick={() => setCommunityTab(tab.id as 'announcements' | 'discussions' | 'chat')}
+                                  onClick={() => setCommunityTab(tab.id as any)}
                                   className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                                     communityTab === tab.id
                                       ? 'bg-white text-blue-600 shadow-sm'
@@ -946,6 +969,110 @@ export default function StudentDashboard({
                                     </div>
                                   ))}
                                 </div>
+                              </div>
+                            )}
+
+                            {/* NEW: Browse Courses Tab Content */}
+                            {communityTab === 'browse-courses' && (
+                              <div>
+                                <div className="mb-6">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                                    Available Courses from Your Instructor
+                                  </h3>
+                                  <p className="text-gray-600">
+                                    Discover and enroll in courses offered by your instructor
+                                  </p>
+                                </div>
+
+                                {isLoadingCourses ? (
+                                  <div className="flex items-center justify-center py-12">
+                                    <div className="text-center">
+                                      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                                      <p className="text-gray-600">Loading courses...</p>
+                                    </div>
+                                  </div>
+                                ) : availableCourses.length === 0 ? (
+                                  <div className="text-center py-12">
+                                    <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available yet</h3>
+                                    <p className="text-gray-600">Your instructor hasn't published any courses yet.</p>
+                                  </div>
+                                ) : (
+                                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {availableCourses.map((course) => (
+                                      <div key={course.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                                        <div className="relative">
+                                          <img
+                                            src={course.image_url || 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                                            alt={course.title}
+                                            className="w-full h-48 object-cover"
+                                          />
+                                          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                                            <span className={`text-sm font-medium ${
+                                              course.type === 'free' ? 'text-green-600' : 'text-blue-600'
+                                            }`}>
+                                              {course.type === 'free' ? 'Free' : `$${course.price}`}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="p-6">
+                                          <div className="mb-3">
+                                            <h4 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2">
+                                              {course.title}
+                                            </h4>
+                                            <p className="text-gray-600 text-sm line-clamp-3">
+                                              {course.description}
+                                            </p>
+                                          </div>
+
+                                          <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                                            <div className="flex items-center space-x-4">
+                                              <div className="flex items-center space-x-1">
+                                                <BookOpen className="w-4 h-4" />
+                                                <span>{course.lessons?.length || 0} lessons</span>
+                                              </div>
+                                              <div className="flex items-center space-x-1">
+                                                <Users className="w-4 h-4" />
+                                                <span>{course.course_analytics?.[0]?.total_students || 0} students</span>
+                                              </div>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                              course.level === 'Beginner' ? 'bg-green-100 text-green-700' :
+                                              course.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                                              'bg-red-100 text-red-700'
+                                            }`}>
+                                              {course.level}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center space-x-3">
+                                            <button 
+                                              className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-2 px-4 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                                              onClick={() => {
+                                                // TODO: Implement enrollment logic
+                                                console.log('Enrolling in course:', course.id);
+                                                alert('Enrollment functionality coming soon!');
+                                              }}
+                                            >
+                                              Enroll Now
+                                            </button>
+                                            <button 
+                                              className="border border-gray-300 text-gray-700 py-2 px-4 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                                              onClick={() => {
+                                                // TODO: Show course preview/details
+                                                console.log('Viewing course details:', course.id);
+                                                alert('Course preview coming soon!');
+                                              }}
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
 

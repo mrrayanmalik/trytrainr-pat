@@ -165,3 +165,50 @@ export async function getPublishedCourses(instructorId?: string): Promise<Course
   if (error) throw error
   return data || []
 }
+
+// NEW: Get published courses for a student's instructor
+export async function getInstructorCoursesForStudent(): Promise<CourseWithLessons[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // First get the student's instructor
+  const { data: student, error: studentError } = await supabase
+    .from('students')
+    .select('instructor_id')
+    .eq('email', user.email)
+    .single()
+
+  if (studentError || !student) {
+    throw new Error('Student record not found')
+  }
+
+  // Get published courses from their instructor
+  const { data, error } = await supabase
+    .from('courses')
+    .select(`
+      *,
+      lessons(id, title, order_index, duration),
+      course_analytics(total_students, avg_rating)
+    `)
+    .eq('instructor_id', student.instructor_id)
+    .eq('published', true)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+// NEW: Check if student is enrolled in a course (you might want to implement this later)
+export async function isStudentEnrolled(courseId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('course_id', courseId)
+    .eq('student_id', user.id)
+    .single()
+
+  return !!data
+}
