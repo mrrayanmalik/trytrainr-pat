@@ -35,7 +35,46 @@ import {
   RefreshCw,
   Loader
 } from 'lucide-react';
-import { domainChecker, DomainStatus } from '../utils/domainChecker';
+
+// Mock domain status type
+interface DomainStatus {
+  isConnected: boolean;
+  hasSSL: boolean;
+  dnsConfigured: boolean;
+  cnameValid: boolean;
+  error?: string;
+  lastChecked: string;
+}
+
+// Mock domain checker
+const mockDomainChecker = {
+  simulateDomainCheck: async (domain: string, isCustom: boolean): Promise<DomainStatus> => {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    if (isCustom) {
+      // Simulate custom domain checks
+      const isConnected = Math.random() > 0.3; // 70% chance of success
+      return {
+        isConnected,
+        hasSSL: isConnected && Math.random() > 0.2,
+        dnsConfigured: isConnected,
+        cnameValid: isConnected,
+        error: isConnected ? undefined : 'Domain not properly configured. Please check your DNS settings.',
+        lastChecked: new Date().toISOString()
+      };
+    } else {
+      // Subdomain is always working
+      return {
+        isConnected: true,
+        hasSSL: true,
+        dnsConfigured: true,
+        cnameValid: true,
+        lastChecked: new Date().toISOString()
+      };
+    }
+  }
+};
 
 interface SettingsProps {
   userRole?: 'educator' | 'student';
@@ -68,7 +107,7 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
   ]);
 
   const handleDomainSetup = () => {
-    // In real app, this would save to backend
+    // Mock domain setup
     console.log('Setting up domain:', { selectedDomain, domainData });
     
     if (selectedDomain === 'subdirectory') {
@@ -80,6 +119,7 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
     }
     
     setShowDomainModal(false);
+    alert('Domain settings updated successfully!');
   };
 
   const isSubdirectoryValid = domainData.subdirectory.length >= 3 && /^[a-zA-Z0-9-]+$/.test(domainData.subdirectory);
@@ -93,8 +133,8 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
     
     setIsCheckingDomain(true);
     try {
-      const isCustom = !currentDomain.includes('.trainr.app');
-      const status = await domainChecker.simulateDomainCheck(currentDomain, isCustom);
+      const isCustom = !currentDomain.includes('trytrainr.com');
+      const status = await mockDomainChecker.simulateDomainCheck(currentDomain, isCustom);
       setDomainConnectionStatus(status);
     } catch (error) {
       console.error('Domain check failed:', error);
@@ -115,10 +155,33 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
   React.useEffect(() => {
     checkDomainConnection();
   }, [currentDomain]);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // Show success message (in real app, use toast)
     alert('Link copied to clipboard!');
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    if (window.confirm('Are you sure you want to remove this user?')) {
+      setUsers(prev => prev.filter(user => user.id !== userId));
+      alert('User removed successfully!');
+    }
+  };
+
+  const handleAddUser = () => {
+    alert('Add user functionality - would open invite modal');
+  };
+
+  const handleEditUser = (userId: number) => {
+    alert(`Edit user ${userId} functionality`);
+  };
+
+  const handleSaveBranding = () => {
+    alert('Branding settings saved successfully!');
+  };
+
+  const handleUploadLogo = () => {
+    alert('Logo upload functionality - would open file picker');
   };
 
   return (
@@ -163,7 +226,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                 {/* Payment Settings Grid */}
                 <div className="grid md:grid-cols-3 gap-6 mb-12">
                   {/* Payment Setup */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Payment setup functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                         <CreditCard className="w-6 h-6 text-blue-600" />
@@ -176,7 +242,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Checkout */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Checkout settings functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
                         <ShoppingCart className="w-6 h-6 text-green-600" />
@@ -189,7 +258,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Customer Payments */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Customer payments functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
                         <Users className="w-6 h-6 text-purple-600" />
@@ -203,7 +275,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                 </div>
 
                 {/* Tax Settings */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div 
+                  onClick={() => alert('Tax settings functionality')}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 cursor-pointer hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-center mb-4">
                     <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
                       <DollarSign className="w-6 h-6 text-yellow-600" />
@@ -227,7 +302,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                 {/* Site Settings Grid */}
                 <div className="grid md:grid-cols-3 gap-6 mb-8">
                   {/* Site Details */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Site details functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                         <Globe className="w-6 h-6 text-blue-600" />
@@ -240,7 +318,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Domain */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => setShowDomainModal(true)}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
                         <Link2 className="w-6 h-6 text-green-600" />
@@ -253,7 +334,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Marketing Settings */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Marketing settings functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
                         <BarChart3 className="w-6 h-6 text-purple-600" />
@@ -266,7 +350,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Email Templates */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Email templates functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
                         <Mail className="w-6 h-6 text-red-600" />
@@ -279,7 +366,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Blog Settings */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Blog settings functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
                         <FileText className="w-6 h-6 text-orange-600" />
@@ -292,7 +382,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Mobile App Settings */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Mobile app settings functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
                         <Mobile className="w-6 h-6 text-indigo-600" />
@@ -302,6 +395,210 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                       </div>
                     </div>
                     <p className="text-sm text-gray-600">Manage your site settings for the Trainr Mobile App</p>
+                  </div>
+                </div>
+
+                {/* Current Domain Status */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">Your Domain</h2>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={checkDomainConnection}
+                        disabled={isCheckingDomain}
+                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center disabled:opacity-50"
+                      >
+                        {isCheckingDomain ? (
+                          <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        Check Status
+                      </button>
+                      <button
+                        onClick={() => setShowDomainModal(true)}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center"
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Change Domain
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+                          <Globe className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{currentDomain}</h3>
+                          <div className="flex items-center space-x-2">
+                            {domainConnectionStatus?.isConnected && (
+                              <>
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span className="text-sm text-green-600">
+                                  {domainConnectionStatus.hasSSL ? 'Active & Secure' : 'Active (No SSL)'}
+                                </span>
+                              </>
+                            )}
+                            {domainConnectionStatus && !domainConnectionStatus.isConnected && (
+                              <>
+                                <AlertCircle className="w-4 h-4 text-yellow-500" />
+                                <span className="text-sm text-red-600">Not Connected</span>
+                              </>
+                            )}
+                            {isCheckingDomain && (
+                              <>
+                                <Loader className="w-4 h-4 text-blue-500 animate-spin" />
+                                <span className="text-sm text-blue-600">Checking...</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => copyToClipboard(`https://${currentDomain}`)}
+                          className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
+                          title="Copy link"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <a
+                          href={`https://${currentDomain}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
+                          title="Visit site"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Domain Status Details */}
+                    {domainConnectionStatus && (
+                      <div className="mt-4">
+                        {domainConnectionStatus.isConnected ? (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h4 className="font-medium text-green-800 mb-2 flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Domain Connected Successfully
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${domainConnectionStatus.hasSSL ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                                <span className="text-green-700">
+                                  SSL: {domainConnectionStatus.hasSSL ? 'Active' : 'Pending'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${domainConnectionStatus.dnsConfigured ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-green-700">
+                                  DNS: {domainConnectionStatus.dnsConfigured ? 'Configured' : 'Not Configured'}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-green-600 mt-2">
+                              Last checked: {new Date(domainConnectionStatus.lastChecked).toLocaleString()}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <h4 className="font-medium text-red-800 mb-2 flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-2" />
+                              Domain Connection Issues
+                            </h4>
+                            {domainConnectionStatus.error && (
+                              <p className="text-sm text-red-700 mb-3">{domainConnectionStatus.error}</p>
+                            )}
+                            <p className="text-sm text-yellow-700 mb-3">
+                              Your domain is not properly connected. Please check the following:
+                            </p>
+                            <div className="text-sm text-red-700">
+                              <p className="font-medium mb-1">Next steps:</p>
+                              <ol className="list-decimal list-inside space-y-1">
+                                <li className={domainConnectionStatus.cnameValid ? 'line-through text-green-600' : ''}>
+                                  Add a CNAME record pointing to trytrainr.com
+                                </li>
+                                <li className={domainConnectionStatus.dnsConfigured ? 'line-through text-green-600' : ''}>
+                                  Wait for DNS propagation (up to 48 hours)
+                                </li>
+                                <li className={domainConnectionStatus.hasSSL ? 'line-through text-green-600' : ''}>
+                                  SSL certificate will be automatically provisioned
+                                </li>
+                              </ol>
+                            </div>
+                            <p className="text-xs text-red-600 mt-2">
+                              Last checked: {new Date(domainConnectionStatus.lastChecked).toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Branding Settings */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Branding</h2>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Business Name
+                      </label>
+                      <input
+                        type="text"
+                        value={domainData.businessName}
+                        onChange={(e) => setDomainData({...domainData, businessName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Logo
+                      </label>
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+                          <span className="text-white font-bold text-xl">W</span>
+                        </div>
+                        <div>
+                          <button 
+                            onClick={handleUploadLogo}
+                            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            Upload Logo
+                          </button>
+                          <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 2MB</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Brand Colors
+                      </label>
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Primary</label>
+                          <input type="color" value="#7c3aed" className="w-12 h-8 rounded border border-gray-300" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Secondary</label>
+                          <input type="color" value="#2563eb" className="w-12 h-8 rounded border border-gray-300" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={handleSaveBranding}
+                      className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                    >
+                      Save Branding
+                    </button>
                   </div>
                 </div>
               </div>
@@ -317,7 +614,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                 {/* Account Settings Grid */}
                 <div className="grid md:grid-cols-3 gap-6 mb-12">
                   {/* Subscription & Billing */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Subscription & billing functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                         <CreditCard className="w-6 h-6 text-blue-600" />
@@ -343,7 +643,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Notifications & Privacy */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Notifications & privacy functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
                         <Bell className="w-6 h-6 text-red-600" />
@@ -356,7 +659,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   </div>
 
                   {/* Account Tracking */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <div 
+                    onClick={() => alert('Account tracking functionality')}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
                         <BarChart3 className="w-6 h-6 text-indigo-600" />
@@ -373,7 +679,10 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-gray-900">Team Members</h3>
-                    <button className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center">
+                    <button 
+                      onClick={handleAddUser}
+                      className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center"
+                    >
                       <UserPlus className="w-4 h-4 mr-2" />
                       Add User
                     </button>
@@ -425,10 +734,16 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                             <td className="py-3 px-4 text-gray-600 text-sm">{user.lastLogin}</td>
                             <td className="py-3 px-4">
                               <div className="flex items-center space-x-2">
-                                <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                                <button 
+                                  onClick={() => handleEditUser(user.id)}
+                                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                                >
                                   <Edit3 className="w-4 h-4" />
                                 </button>
-                                <button className="text-gray-400 hover:text-red-600 transition-colors">
+                                <button 
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="text-gray-400 hover:text-red-600 transition-colors"
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
@@ -442,222 +757,6 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
               </div>
             </div>
           )}
-
-          {/* Legacy Domain & Branding Tab (keeping for backward compatibility) */}
-          {activeTab === 'domain' && (
-            <div className="space-y-6">
-              {/* Current Domain Status */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Your Domain</h2>
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={checkDomainConnection}
-                      disabled={isCheckingDomain}
-                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center disabled:opacity-50"
-                    >
-                      {isCheckingDomain ? (
-                        <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                      )}
-                      Check Status
-                    </button>
-                    <button
-                      onClick={() => setShowDomainModal(true)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center"
-                    >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      Change Domain
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                        <Globe className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{currentDomain}</h3>
-                        <div className="flex items-center space-x-2">
-                          {domainConnectionStatus?.isConnected && (
-                            <>
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                              <span className="text-sm text-green-600">
-                                {domainConnectionStatus.hasSSL ? 'Active & Secure' : 'Active (No SSL)'}
-                              </span>
-                            </>
-                          )}
-                          {domainConnectionStatus && !domainConnectionStatus.isConnected && (
-                            <>
-                              <AlertCircle className="w-4 h-4 text-yellow-500" />
-                              <span className="text-sm text-red-600">Not Connected</span>
-                            </>
-                          )}
-                          {isCheckingDomain && (
-                            <>
-                              <Loader className="w-4 h-4 text-blue-500 animate-spin" />
-                              <span className="text-sm text-blue-600">Checking...</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => copyToClipboard(`https://${currentDomain}`)}
-                        className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                        title="Copy link"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <a
-                        href={`https://${currentDomain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                        title="Visit site"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Domain Status Details */}
-                  {domainConnectionStatus && (
-                    <div className="mt-4">
-                      {domainConnectionStatus.isConnected ? (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                          <h4 className="font-medium text-green-800 mb-2 flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Domain Connected Successfully
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-2 h-2 rounded-full ${domainConnectionStatus.hasSSL ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                              <span className="text-green-700">
-                                SSL: {domainConnectionStatus.hasSSL ? 'Active' : 'Pending'}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-2 h-2 rounded-full ${domainConnectionStatus.dnsConfigured ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                              <span className="text-green-700">
-                                DNS: {domainConnectionStatus.dnsConfigured ? 'Configured' : 'Not Configured'}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-green-600 mt-2">
-                            Last checked: {new Date(domainConnectionStatus.lastChecked).toLocaleString()}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                          <h4 className="font-medium text-red-800 mb-2 flex items-center">
-                            <AlertCircle className="w-4 h-4 mr-2" />
-                            Domain Connection Issues
-                          </h4>
-                          {domainConnectionStatus.error && (
-                            <p className="text-sm text-red-700 mb-3">{domainConnectionStatus.error}</p>
-                          )}
-                          <p className="text-sm text-yellow-700 mb-3">
-                            Your domain is not properly connected. Please check the following:
-                          </p>
-                          <div className="text-sm text-red-700">
-                            <p className="font-medium mb-1">Next steps:</p>
-                            <ol className="list-decimal list-inside space-y-1">
-                              <li className={domainConnectionStatus.cnameValid ? 'line-through text-green-600' : ''}>
-                                Add a CNAME record pointing to trytrainr.com
-                              </li>
-                              <li className={domainConnectionStatus.dnsConfigured ? 'line-through text-green-600' : ''}>
-                                Wait for DNS propagation (up to 48 hours)
-                              </li>
-                              <li className={domainConnectionStatus.hasSSL ? 'line-through text-green-600' : ''}>
-                                SSL certificate will be automatically provisioned
-                              </li>
-                            </ol>
-                          </div>
-                          <p className="text-xs text-red-600 mt-2">
-                            Last checked: {new Date(domainConnectionStatus.lastChecked).toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Branding Settings */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Branding</h2>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Business Name
-                    </label>
-                    <input
-                      type="text"
-                      value={domainData.businessName}
-                      onChange={(e) => setDomainData({...domainData, businessName: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Logo
-                    </label>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                        <span className="text-white font-bold text-xl">W</span>
-                      </div>
-                      <div>
-                        <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                          Upload Logo
-                        </button>
-                        <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 2MB</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Brand Colors
-                    </label>
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Primary</label>
-                        <input type="color" value="#7c3aed" className="w-12 h-8 rounded border border-gray-300" />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Secondary</label>
-                        <input type="color" value="#2563eb" className="w-12 h-8 rounded border border-gray-300" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <button className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors">
-                    Save Branding
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Fallback for other tabs */}
-          {!['payment', 'site', 'account', 'domain'].includes(activeTab) && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {tabs.find(tab => tab.id === activeTab)?.label}
-              </h2>
-              <p className="text-gray-600">
-                Settings for {tabs.find(tab => tab.id === activeTab)?.label.toLowerCase()} will be implemented here.
-              </p>
-            </div>
-          )}
-
       </div>
 
       {/* Domain Setup Modal */}
@@ -863,7 +962,7 @@ export default function Settings({ userRole = 'educator' }: SettingsProps) {
                   disabled={!isFormValid}
                   className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {selectedDomain === 'subdirectory' ? 'Update Domain' : 'Setup Custom Domain'}
+                  {selectedDomain === 'subdomain' ? 'Update Domain' : 'Setup Custom Domain'}
                 </button>
               </div>
 

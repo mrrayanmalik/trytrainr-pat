@@ -1,10 +1,57 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Users, Video, ExternalLink, Plus, ChevronLeft, ChevronRight, Link } from 'lucide-react';
 import VideoLinkInput from './VideoLinkInput';
-import { getMeetings, createMeeting, updateMeeting, deleteMeeting } from '../lib/api/meetings';
-import type { Database } from '../lib/database.types';
 
-type Meeting = Database['public']['Tables']['meetings']['Row'];
+// Mock Meeting type
+interface Meeting {
+  id: string;
+  title: string;
+  description: string | null;
+  meeting_url: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  max_attendees: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Mock meetings data
+const MOCK_MEETINGS: Meeting[] = [
+  {
+    id: '1',
+    title: 'React Hooks Deep Dive',
+    description: 'Advanced session on useState, useEffect, and custom hooks',
+    meeting_url: 'https://zoom.us/j/123456789',
+    scheduled_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+    duration_minutes: 90,
+    max_attendees: 50,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    title: 'JavaScript Async/Await Masterclass',
+    description: 'Understanding promises, async/await, and error handling',
+    meeting_url: 'https://meet.google.com/abc-defg-hij',
+    scheduled_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
+    duration_minutes: 60,
+    max_attendees: 100,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    title: 'Portfolio Review Session',
+    description: 'Live feedback on student portfolios',
+    meeting_url: 'https://teams.microsoft.com/l/meetup-join/xyz',
+    scheduled_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+    duration_minutes: 120,
+    max_attendees: 25,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+];
+
 export default function Events() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -24,9 +71,9 @@ export default function Events() {
     maxAttendees: '100'
   });
 
-  const [scheduledCalls, setScheduledCalls] = useState<Meeting[]>([]);
+  const [scheduledCalls, setScheduledCalls] = useState<Meeting[]>(MOCK_MEETINGS);
 
-  // Load meetings on component mount
+  // Mock load meetings function
   React.useEffect(() => {
     loadMeetings();
   }, []);
@@ -35,18 +82,19 @@ export default function Events() {
     try {
       setIsLoading(true);
       setError(null);
-      const meetingsData = await getMeetings();
-      setScheduledCalls(meetingsData);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setScheduledCalls(MOCK_MEETINGS);
     } catch (err) {
       console.error('Error loading meetings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load meetings');
+      setError('Failed to load meetings');
     } finally {
       setIsLoading(false);
     }
   };
 
   // Generate calendar days
-  const generateCalendarDays = () => {
+  const generateCalendarDays = (): Date[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -54,7 +102,7 @@ export default function Events() {
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
-    const days = [];
+    const days: Date[] = [];
     const current = new Date(startDate);
     
     for (let i = 0; i < 42; i++) {
@@ -100,22 +148,27 @@ export default function Events() {
       setIsLoading(true);
       setError(null);
 
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Combine date and time into ISO string
       const scheduledAt = new Date(`${newCall.date}T${newCall.time}`).toISOString();
 
-      const meetingData = {
+      // Create mock meeting object
+      const newMeeting: Meeting = {
+        id: Date.now().toString(), // Simple ID generation
         title: newCall.title,
         description: newCall.description || null,
         meeting_url: newCall.url,
         scheduled_at: scheduledAt,
         duration_minutes: parseInt(newCall.duration),
-        max_attendees: parseInt(newCall.maxAttendees)
+        max_attendees: parseInt(newCall.maxAttendees),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const createdMeeting = await createMeeting(meetingData);
-      
-      // Optimistic update
-      setScheduledCalls(prev => [...prev, createdMeeting]);
+      // Add to local state
+      setScheduledCalls(prev => [...prev, newMeeting]);
       
       setShowAddCall(false);
       setNewCall({
@@ -124,12 +177,17 @@ export default function Events() {
         time: '',
         duration: '60',
         url: '',
+        videoUrl: '',
+        videoSource: '',
         description: '',
         maxAttendees: '100'
       });
+
+      alert('Call scheduled successfully!');
     } catch (err) {
       console.error('Error creating meeting:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create meeting');
+      setError('Failed to create meeting');
+      alert('Failed to schedule call');
     } finally {
       setIsLoading(false);
     }
@@ -143,6 +201,13 @@ export default function Events() {
       videoSource: videoData.source
     }));
     setShowVideoInput(false);
+  };
+
+  const handleDeleteCall = (callId: string) => {
+    if (window.confirm('Are you sure you want to delete this call?')) {
+      setScheduledCalls(prev => prev.filter(call => call.id !== callId));
+      alert('Call deleted successfully!');
+    }
   };
 
   return (
@@ -160,6 +225,12 @@ export default function Events() {
           Schedule Call
         </button>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-4 gap-8">
         {/* Calendar */}
@@ -259,7 +330,16 @@ export default function Events() {
                 <div className="space-y-3">
                   {getCallsForDate(selectedDate).map((call) => (
                     <div key={call.id} className="p-3 bg-purple-50 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-1">{call.title}</h4>
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="font-medium text-gray-900">{call.title}</h4>
+                        <button
+                          onClick={() => handleDeleteCall(call.id)}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                          title="Delete call"
+                        >
+                          ✕
+                        </button>
+                      </div>
                       <div className="text-sm text-gray-600 space-y-1">
                         <div className="flex items-center">
                           <Clock className="w-3 h-3 mr-1" />
@@ -296,7 +376,7 @@ export default function Events() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Total Calls</span>
-                <span className="font-medium">12</span>
+                <span className="font-medium">{scheduledCalls.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Attendees</span>
@@ -440,7 +520,7 @@ export default function Events() {
                 <button
                   onClick={handleAddCall}
                   disabled={isLoading || !newCall.title || !newCall.date || !newCall.time || !newCall.url}
-                  className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Creating...' : 'Schedule Call'}
                 </button>

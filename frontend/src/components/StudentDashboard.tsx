@@ -27,8 +27,6 @@ import {
   Zap,
   Loader2,
 } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
-import { getInstructorCoursesForStudent } from "../lib/api/courses";
 
 interface Student {
   id: string;
@@ -72,10 +70,6 @@ interface ChatMessage {
   message: string;
   timestamp: string;
   courseId: number;
-}
-
-interface StudentDashboardProps {
-  studentData?: Student;
 }
 
 // Consolidated mock data
@@ -191,10 +185,43 @@ const MOCK_DATA = {
   ] as ChatMessage[]
 };
 
-export default function StudentDashboard({
-  studentData,
-}: StudentDashboardProps) {
-  const { signOutUser, isSigningOut } = useAuth();
+// Mock available courses data
+const MOCK_AVAILABLE_COURSES = [
+  {
+    id: 4,
+    title: "Python for Beginners",
+    description: "Learn Python programming from scratch with hands-on projects and real-world examples.",
+    image_url: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400",
+    type: "free",
+    level: "Beginner",
+    lessons: new Array(20).fill({}), // Mock 20 lessons
+    course_analytics: [{ total_students: 156 }]
+  },
+  {
+    id: 5,
+    title: "Node.js Backend Development",
+    description: "Build scalable backend applications with Node.js, Express, and databases.",
+    image_url: "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=400",
+    type: "paid",
+    price: 99,
+    level: "Intermediate",
+    lessons: new Array(15).fill({}), // Mock 15 lessons
+    course_analytics: [{ total_students: 89 }]
+  },
+  {
+    id: 6,
+    title: "Advanced CSS & Animations",
+    description: "Master advanced CSS techniques, animations, and modern layout systems.",
+    image_url: "https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=400",
+    type: "paid",
+    price: 79,
+    level: "Advanced",
+    lessons: new Array(12).fill({}), // Mock 12 lessons
+    course_analytics: [{ total_students: 67 }]
+  }
+];
+
+export default function StudentDashboard() {
   const [activeView, setActiveView] = useState("courses");
   const [selectedCommunity, setSelectedCommunity] = useState<number | null>(null);
   const [communityTab, setCommunityTab] = useState<'announcements' | 'discussions' | 'browse-courses' | 'chat'>('announcements');
@@ -205,15 +232,15 @@ export default function StudentDashboard({
     currentStreak: 0,
   });
 
-  // NEW: State for available courses
+  // State for available courses
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
-  // Fallback student data if not provided
-  const student = studentData || {
+  // Mock student data
+  const student: Student = {
     id: "student-1",
     email: "student@example.com",
-    full_name: "Student",
+    full_name: "Alex Student",
     instructor_id: "instructor-1",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -230,8 +257,7 @@ export default function StudentDashboard({
 
   const loadStudentProgress = async () => {
     try {
-      // In a real app, these would be API calls to get actual progress
-      // For now, using mock data
+      // Mock progress data
       setProgress({
         coursesEnrolled: 3,
         coursesCompleted: 1,
@@ -243,12 +269,13 @@ export default function StudentDashboard({
     }
   };
 
-  // NEW: Function to load available courses
+  // Mock function to load available courses
   const loadAvailableCourses = async () => {
     setIsLoadingCourses(true);
     try {
-      const courses = await getInstructorCoursesForStudent();
-      setAvailableCourses(courses);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAvailableCourses(MOCK_AVAILABLE_COURSES);
     } catch (error) {
       console.error('Error loading available courses:', error);
     } finally {
@@ -256,15 +283,17 @@ export default function StudentDashboard({
     }
   };
 
-  const handleLogout = async () => {
-    await signOutUser();
+  const handleLogout = () => {
+    // Simple logout - just redirect to home or show a message
+    alert("Logout functionality - redirect to home page");
+    // In a real app: window.location.href = "/";
   };
 
   const menuItems = [
     { id: "courses", label: "My Courses", icon: BookOpen },
     { id: "community", label: "Community", icon: MessageCircle },
     { id: "live-calls", label: "Live Calls", icon: Video },
-    { id: "progress", label: "Settings", icon: Target },
+    { id: "progress", label: "Progress", icon: Target },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -315,7 +344,6 @@ export default function StudentDashboard({
   };
 
   // Mock data for different sections
-
   const liveCalls = [
     {
       id: 1,
@@ -453,7 +481,7 @@ export default function StudentDashboard({
           {/* Bottom Actions */}
           <div className="space-y-3 mt-8">
             <button
-              onClick={() => (window.location.href = "/")}
+              onClick={() => alert("Navigate to home page")}
               className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl text-blue-100 hover:text-white hover:bg-white/10 transition-all duration-200"
             >
               <ArrowLeft className="w-5 h-5 mr-3" />
@@ -839,7 +867,7 @@ export default function StudentDashboard({
                               {[
                                 { id: 'announcements', label: 'Announcements', icon: Bell },
                                 { id: 'discussions', label: 'Discussions', icon: MessageCircle },
-                                { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen }, // NEW TAB
+                                { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen },
                                 { id: 'chat', label: 'Live Chat', icon: Users }
                               ].map((tab) => (
                                 <button
@@ -921,7 +949,10 @@ export default function StudentDashboard({
                                             <FileText className="w-5 h-5" />
                                           </button>
                                         </div>
-                                        <button className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300">
+                                        <button 
+                                          onClick={() => alert("Post discussion functionality")}
+                                          className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                                        >
                                           Post Discussion
                                         </button>
                                       </div>
@@ -972,7 +1003,7 @@ export default function StudentDashboard({
                               </div>
                             )}
 
-                            {/* NEW: Browse Courses Tab Content */}
+                            {/* Browse Courses Tab Content */}
                             {communityTab === 'browse-courses' && (
                               <div>
                                 <div className="mb-6">
@@ -1003,7 +1034,7 @@ export default function StudentDashboard({
                                       <div key={course.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
                                         <div className="relative">
                                           <img
-                                            src={course.image_url || 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                                            src={course.image_url}
                                             alt={course.title}
                                             className="w-full h-48 object-cover"
                                           />
@@ -1050,7 +1081,6 @@ export default function StudentDashboard({
                                             <button 
                                               className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-2 px-4 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
                                               onClick={() => {
-                                                // TODO: Implement enrollment logic
                                                 console.log('Enrolling in course:', course.id);
                                                 alert('Enrollment functionality coming soon!');
                                               }}
@@ -1060,7 +1090,6 @@ export default function StudentDashboard({
                                             <button 
                                               className="border border-gray-300 text-gray-700 py-2 px-4 rounded-xl hover:bg-gray-50 transition-all duration-300"
                                               onClick={() => {
-                                                // TODO: Show course preview/details
                                                 console.log('Viewing course details:', course.id);
                                                 alert('Course preview coming soon!');
                                               }}
@@ -1117,7 +1146,10 @@ export default function StudentDashboard({
                                       placeholder="Type your message..."
                                       className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                    <button className="bg-blue-500 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors">
+                                    <button 
+                                      onClick={() => alert("Send message functionality")}
+                                      className="bg-blue-500 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors"
+                                    >
                                       <Send className="w-5 h-5" />
                                     </button>
                                   </div>
@@ -1233,23 +1265,35 @@ export default function StudentDashboard({
                           <div className="flex items-center space-x-3">
                             {call.status === 'upcoming' ? (
                               <>
-                                <button className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
+                                <button 
+                                  onClick={() => alert("Join call functionality")}
+                                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+                                >
                                   <Video className="w-5 h-5" />
                                   <span>Join Call</span>
                                 </button>
-                                <button className="border border-gray-300 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-300">
+                                <button 
+                                  onClick={() => alert("Set reminder functionality")}
+                                  className="border border-gray-300 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                                >
                                   <Bell className="w-5 h-5" />
                                 </button>
                               </>
                             ) : (
                               <>
                                 {call.recording && (
-                                  <button className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-300 flex items-center space-x-2">
+                                  <button 
+                                    onClick={() => alert("Watch recording functionality")}
+                                    className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-300 flex items-center space-x-2"
+                                  >
                                     <Play className="w-5 h-5" />
                                     <span>Watch Recording</span>
                                   </button>
                                 )}
-                                <button className="border border-gray-300 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-300">
+                                <button 
+                                  onClick={() => alert("Download functionality")}
+                                  className="border border-gray-300 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                                >
                                   <Download className="w-5 h-5" />
                                 </button>
                               </>
@@ -1258,6 +1302,135 @@ export default function StudentDashboard({
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PROGRESS VIEW */}
+              {activeView === "progress" && (
+                <div>
+                  <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900">
+                      Your Progress
+                    </h2>
+                    <p className="text-gray-600 mt-2">
+                      Track your achievements and learning milestones
+                    </p>
+                  </div>
+
+                  {/* Progress Overview */}
+                  <div className="grid md:grid-cols-2 gap-8 mb-8">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-6">Learning Stats</h3>
+                      <div className="space-y-6">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-600">Overall Progress</span>
+                            <span className="font-semibold text-gray-900">60%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full" style={{ width: '60%' }}></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-600">This Week</span>
+                            <span className="font-semibold text-gray-900">8.5 hours</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" style={{ width: '85%' }}></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-600">Engagement Score</span>
+                            <span className="font-semibold text-gray-900">92/100</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 h-3 rounded-full" style={{ width: '92%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <Award className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Completed React Hooks lesson</p>
+                            <p className="text-sm text-gray-500">2 hours ago</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <MessageCircle className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Posted in JavaScript community</p>
+                            <p className="text-sm text-gray-500">4 hours ago</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <Star className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Earned Week Warrior badge</p>
+                            <p className="text-sm text-gray-500">1 day ago</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Achievements */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Achievements</h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {achievements.map((achievement) => (
+                        <div
+                          key={achievement.id}
+                          className={`p-6 rounded-xl border-2 transition-all duration-300 ${
+                            achievement.earned
+                              ? 'border-green-200 bg-green-50'
+                              : 'border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                              achievement.earned
+                                ? 'bg-green-500'
+                                : 'bg-gray-400'
+                            }`}>
+                              <achievement.icon className="w-8 h-8 text-white" />
+                            </div>
+                            <h4 className="font-bold text-gray-900 mb-2">{achievement.title}</h4>
+                            <p className="text-sm text-gray-600 mb-4">{achievement.description}</p>
+                            {achievement.earned ? (
+                              <span className="text-green-600 text-sm font-medium">
+                                Earned {achievement.date}
+                              </span>
+                            ) : (
+                              <div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                  <div
+                                    className="bg-blue-500 h-2 rounded-full"
+                                    style={{ width: `${achievement.progress}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-gray-500 text-sm">
+                                  {achievement.progress}% complete
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1289,7 +1462,10 @@ export default function StudentDashboard({
                               className="w-20 h-20 rounded-full object-cover"
                             />
                             <div>
-                              <button className="bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition-colors">
+                              <button 
+                                onClick={() => alert("Change photo functionality")}
+                                className="bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition-colors"
+                              >
                                 Change Photo
                               </button>
                               <p className="text-sm text-gray-500 mt-1">
@@ -1305,7 +1481,7 @@ export default function StudentDashboard({
                               </label>
                               <input
                                 type="text"
-                                value={student.full_name}
+                                defaultValue={student.full_name}
                                 className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                             </div>
@@ -1315,7 +1491,7 @@ export default function StudentDashboard({
                               </label>
                               <input
                                 type="email"
-                                value={student.email}
+                                defaultValue={student.email}
                                 className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                             </div>
@@ -1351,7 +1527,10 @@ export default function StudentDashboard({
                             />
                           </div>
 
-                          <button className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300">
+                          <button 
+                            onClick={() => alert("Save changes functionality")}
+                            className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                          >
                             Save Changes
                           </button>
                         </div>
@@ -1402,7 +1581,10 @@ export default function StudentDashboard({
                           Account Actions
                         </h3>
                         <div className="space-y-4">
-                          <button className="w-full flex items-center justify-between p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
+                          <button 
+                            onClick={() => alert("Export data functionality")}
+                            className="w-full flex items-center justify-between p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+                          >
                             <div className="flex items-center space-x-3">
                               <Download className="w-5 h-5 text-blue-600" />
                               <span className="font-medium text-blue-900">Export Data</span>
@@ -1410,7 +1592,10 @@ export default function StudentDashboard({
                             <span className="text-blue-600">→</span>
                           </button>
 
-                          <button className="w-full flex items-center justify-between p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors">
+                          <button 
+                            onClick={() => alert("Privacy settings functionality")}
+                            className="w-full flex items-center justify-between p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
+                          >
                             <div className="flex items-center space-x-3">
                               <Eye className="w-5 h-5 text-green-600" />
                               <span className="font-medium text-green-900">Privacy Settings</span>
@@ -1418,7 +1603,10 @@ export default function StudentDashboard({
                             <span className="text-green-600">→</span>
                           </button>
 
-                          <button className="w-full flex items-center justify-between p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors">
+                          <button 
+                            onClick={() => alert("Language & region functionality")}
+                            className="w-full flex items-center justify-between p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
+                          >
                             <div className="flex items-center space-x-3">
                               <Globe className="w-5 h-5 text-purple-600" />
                               <span className="font-medium text-purple-900">Language & Region</span>
@@ -1426,7 +1614,10 @@ export default function StudentDashboard({
                             <span className="text-purple-600">→</span>
                           </button>
 
-                          <button className="w-full flex items-center justify-between p-4 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+                          <button 
+                            onClick={() => alert("Delete account functionality")}
+                            className="w-full flex items-center justify-between p-4 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                          >
                             <div className="flex items-center space-x-3">
                               <LogOut className="w-5 h-5 text-red-600" />
                               <span className="font-medium text-red-900">Delete Account</span>
@@ -1444,7 +1635,10 @@ export default function StudentDashboard({
                         <p className="text-gray-600 mb-6">
                           Our support team is here to help you with any questions or issues.
                         </p>
-                        <button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300">
+                        <button 
+                          onClick={() => alert("Contact support functionality")}
+                          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                        >
                           Contact Support
                         </button>
                       </div>

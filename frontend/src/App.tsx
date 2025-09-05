@@ -59,7 +59,7 @@ function App() {
           
           {/* Dashboard Pages - add empty props if needed */}
           <Route path="/dashboard-instructor" element={<InstructorDashboard instructorData={undefined} />} />
-          <Route path="/dashboard-student" element={<StudentDashboard studentData={undefined} />} />
+          <Route path="/dashboard-student" element={<StudentDashboard />} />
           
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Hero onLogin={handleLogin} onShowEducatorSignup={handleShowEducatorSignup} />} />

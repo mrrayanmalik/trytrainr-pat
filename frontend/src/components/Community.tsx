@@ -17,12 +17,113 @@ import {
 } from "lucide-react";
 import VideoLinkInput from './VideoLinkInput';
 import VideoEmbed from './VideoEmbed';
-import {
-  getCommunityPosts,
-  createCommunityPost,
-  togglePinPost,
-} from "../lib/api/community";
-import type { CommunityPostWithAuthor } from "../lib/api/community";
+
+// Mock community post type
+interface CommunityPostWithAuthor {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  image_url?: string;
+  video_url?: string;
+  is_pinned: boolean;
+  likes: number;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+  author: {
+    id: string;
+    full_name: string;
+    avatar_url: string;
+  };
+  commentAvatars: string[];
+}
+
+// Mock posts data
+const MOCK_POSTS: CommunityPostWithAuthor[] = [
+  {
+    id: '1',
+    title: 'Welcome to our learning community!',
+    content: 'This is a space where we can all learn together, share our wins, ask questions, and support each other on our learning journey. Feel free to introduce yourself and let us know what you\'re working on!',
+    category: 'announcements',
+    is_pinned: true,
+    likes: 24,
+    comments: 8,
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    updated_at: new Date().toISOString(),
+    author: {
+      id: 'instructor-1',
+      full_name: 'Sarah Johnson',
+      avatar_url: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=60'
+    },
+    commentAvatars: [
+      'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=60'
+    ]
+  },
+  {
+    id: '2',
+    title: 'Just finished my first React project!',
+    content: 'After weeks of learning React, I finally built my first complete project - a todo app with local storage! The feeling is incredible. Thanks to everyone in this community for the support and encouragement.',
+    category: 'wins',
+    is_pinned: false,
+    likes: 15,
+    comments: 12,
+    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    updated_at: new Date().toISOString(),
+    author: {
+      id: 'student-1',
+      full_name: 'Mike Chen',
+      avatar_url: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=60'
+    },
+    commentAvatars: [
+      'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/1462980/pexels-photo-1462980.jpeg?auto=compress&cs=tinysrgb&w=60'
+    ]
+  },
+  {
+    id: '3',
+    title: 'Need help with async/await in JavaScript',
+    content: 'I\'m struggling to understand when to use async/await vs promises. Can someone explain the difference with a practical example? I\'ve read the documentation but still feeling confused.',
+    category: 'questions',
+    is_pinned: false,
+    likes: 8,
+    comments: 18,
+    created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    updated_at: new Date().toISOString(),
+    author: {
+      id: 'student-2',
+      full_name: 'Emma Wilson',
+      avatar_url: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=60'
+    },
+    commentAvatars: [
+      'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=60'
+    ]
+  },
+  {
+    id: '4',
+    title: 'Hello everyone! New student here',
+    content: 'Hi! I\'m Alex and I just joined this amazing community. I\'m a complete beginner to web development but super excited to learn. Looking forward to connecting with all of you!',
+    category: 'introduction',
+    is_pinned: false,
+    likes: 22,
+    comments: 9,
+    created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    updated_at: new Date().toISOString(),
+    author: {
+      id: 'student-3',
+      full_name: 'Alex Rodriguez',
+      avatar_url: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=60'
+    },
+    commentAvatars: [
+      'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=60',
+      'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=60'
+    ]
+  }
+];
 
 interface CommunityProps {
   userRole?: "educator" | "student";
@@ -48,9 +149,9 @@ export default function Community({ userRole = "student" }: CommunityProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [attachedMedia, setAttachedMedia] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [posts, setPosts] = useState<CommunityPostWithAuthor[]>([]);
+  const [posts, setPosts] = useState<CommunityPostWithAuthor[]>(MOCK_POSTS);
 
-  // Load posts on component mount
+  // Mock load posts function
   React.useEffect(() => {
     loadPosts();
   }, []);
@@ -59,34 +160,38 @@ export default function Community({ userRole = "student" }: CommunityProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const postsData = await getCommunityPosts();
-      setPosts(postsData);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setPosts(MOCK_POSTS);
     } catch (err) {
       console.error("Error loading posts:", err);
-      setError(err instanceof Error ? err.message : "Failed to load posts");
+      setError("Failed to load posts");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Pin/unpin post functionality (educators only)
+  // Mock pin/unpin post functionality (educators only)
   const handleTogglePin = async (postId: string) => {
     if (userRole !== "educator") return;
 
     try {
-      const updatedPost = await togglePinPost(postId);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Optimistic update
+      // Update local state
       setPosts((prev) =>
         prev.map((post) =>
           post.id === postId
-            ? { ...post, is_pinned: updatedPost.is_pinned }
+            ? { ...post, is_pinned: !post.is_pinned }
             : post
         )
       );
+
+      alert(`Post ${posts.find(p => p.id === postId)?.is_pinned ? 'unpinned' : 'pinned'} successfully!`);
     } catch (err) {
       console.error("Error toggling pin:", err);
-      setError(err instanceof Error ? err.message : "Failed to update post");
+      setError("Failed to update post");
     }
   };
 
@@ -111,7 +216,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
     (cat) => cat.id === selectedCategory
   );
 
-  // Handle post creation
+  // Mock post creation
   const handleCreatePost = async () => {
     if (!selectedCategory || !postBody.trim()) return;
 
@@ -119,18 +224,32 @@ export default function Community({ userRole = "student" }: CommunityProps) {
       setIsLoading(true);
       setError(null);
 
-      const postData = {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Create new post
+      const newPost: CommunityPostWithAuthor = {
+        id: Date.now().toString(),
         title: postTitle || "Community Post",
         content: postBody,
         category: selectedCategory,
         image_url: attachedMedia.find((m) => m.type === "image")?.url || null,
         video_url: attachedVideo?.url || attachedMedia.find((m) => m.type === "video")?.url || null,
+        is_pinned: false,
+        likes: 0,
+        comments: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        author: {
+          id: 'current-user',
+          full_name: 'You',
+          avatar_url: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=60'
+        },
+        commentAvatars: []
       };
 
-      await createCommunityPost(postData);
-
-      // Optimistic update - reload posts to get full data with author
-      await loadPosts();
+      // Add to posts (at the beginning for newest first)
+      setPosts(prev => [newPost, ...prev]);
 
       // Reset form
       setPostTitle("");
@@ -140,9 +259,12 @@ export default function Community({ userRole = "student" }: CommunityProps) {
       setAttachedVideo(null);
       setShowPostModal(false);
       setShowCategoryDropdown(false);
+
+      alert('Post created successfully!');
     } catch (err) {
       console.error("Error creating post:", err);
-      setError(err instanceof Error ? err.message : "Failed to create post");
+      setError("Failed to create post");
+      alert('Failed to create post');
     } finally {
       setIsLoading(false);
     }
@@ -237,6 +359,28 @@ export default function Community({ userRole = "student" }: CommunityProps) {
     return `${diffInDays}d`;
   };
 
+  // Mock like functionality
+  const handleLikePost = (postId: string) => {
+    setPosts(prev => 
+      prev.map(post => 
+        post.id === postId 
+          ? { ...post, likes: post.likes + 1 }
+          : post
+      )
+    );
+  };
+
+  // Filter posts based on active filter
+  const filteredPosts = posts.filter(post => {
+    if (activeFilter === "All") return true;
+    if (activeFilter === "General") return post.category === "general";
+    if (activeFilter === "Questions") return post.category === "questions";
+    if (activeFilter === "Wins") return post.category === "wins";
+    if (activeFilter === "Introduction") return post.category === "introduction";
+    if (activeFilter === "Announcements") return post.category === "announcements";
+    return true;
+  });
+
   if (isLoading && posts.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 mt-6">
@@ -268,6 +412,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
       </div>
     );
   }
+
   // Handle category selection
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
@@ -281,6 +426,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
     setPostBody("");
     setSelectedCategory("");
     setAttachedMedia([]);
+    setAttachedVideo(null);
     setShowCategoryDropdown(false);
     setShowEmojiPicker(false);
   };
@@ -329,7 +475,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
 
       {/* Posts Feed */}
       <div className="space-y-4">
-        {posts.map((post) => (
+        {filteredPosts.map((post) => (
           <div
             key={post.id}
             className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
@@ -338,10 +484,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <img
-                  src={
-                    post.author?.avatar_url ||
-                    "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=60"
-                  }
+                  src={post.author?.avatar_url}
                   alt={post.author?.full_name || "User"}
                   className="w-12 h-12 rounded-full object-cover bg-gray-200"
                 />
@@ -404,11 +547,17 @@ export default function Community({ userRole = "student" }: CommunityProps) {
             {/* Post Footer */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-6">
-                <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+                <button 
+                  onClick={() => handleLikePost(post.id)}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
                   <ThumbsUp className="w-5 h-5" />
                   <span className="font-medium">{post.likes}</span>
                 </button>
-                <button className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
+                <button 
+                  onClick={() => alert('Comments functionality coming soon!')}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors"
+                >
                   <MessageCircle className="w-5 h-5" />
                   <span className="font-medium">{post.comments}</span>
                 </button>
@@ -447,7 +596,7 @@ export default function Community({ userRole = "student" }: CommunityProps) {
                   className="w-10 h-10 rounded-full object-cover"
                 />
                 <div>
-                  <span className="font-semibold text-gray-900">R Malik</span>
+                  <span className="font-semibold text-gray-900">You</span>
                   <span className="text-gray-500 ml-2">posting in</span>
                   <span className="font-medium text-gray-700 ml-1">
                     Trainr Community
@@ -576,20 +725,26 @@ export default function Community({ userRole = "student" }: CommunityProps) {
                   </label>
 
                   {/* Link */}
-                  <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <button 
+                    onClick={() => alert('Link functionality coming soon!')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
                     <Link className="w-5 h-5 text-gray-600" />
                   </button>
 
                   {/* Video */}
-                  <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <Video 
-                      className="w-5 h-5 text-gray-600" 
-                      onClick={() => setShowVideoInput(true)}
-                    />
+                  <button 
+                    onClick={() => setShowVideoInput(true)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <Video className="w-5 h-5 text-gray-600" />
                   </button>
 
                   {/* Poll */}
-                  <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <button 
+                    onClick={() => alert('Poll functionality coming soon!')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
                     <BarChart3 className="w-5 h-5 text-gray-600" />
                   </button>
 
@@ -684,9 +839,9 @@ export default function Community({ userRole = "student" }: CommunityProps) {
                 </button>
                 <button
                   onClick={handleCreatePost}
-                  disabled={!canSubmitPost}
+                  disabled={!canSubmitPost || isLoading}
                   className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center ${
-                    canSubmitPost
+                    canSubmitPost && !isLoading
                       ? "bg-gray-800 text-white hover:bg-gray-900"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}

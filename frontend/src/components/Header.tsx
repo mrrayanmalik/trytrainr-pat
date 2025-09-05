@@ -1,37 +1,47 @@
 import { useState } from 'react';
 import { Menu, LogOut, ArrowRight, Loader2 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 
 interface HeaderProps {
   currentView: string;
   onViewChange: (view: string) => void;
-  onShowLogin: () => void;
-  isLoggedIn: boolean;
-  userRole: 'educator' | 'student' | null;
-  onLogout: () => void;
-  onLogin?: (role: 'educator' | 'student', educatorId?: string) => void;
   showFullNavigation?: boolean;
 }
 
-export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, showFullNavigation = false }: HeaderProps) {
+export default function Header({ onViewChange, showFullNavigation = false }: HeaderProps) {
   const [showProductsDropdown, setShowProductsDropdown] = useState(false);
-  const { signOutUser, isSigningOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  
+  // Mock state for demo purposes - you can modify these as needed
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<'educator' | 'student' | null>(null);
 
   const handleSignOut = async () => {
+    setIsSigningOut(true);
     try {
-      await signOutUser();
-      // The signOutUser function handles the redirect to the landing page
+      // Simulate sign out delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock logout functionality
+      setIsLoggedIn(false);
+      setUserRole(null);
+      alert("Logged out successfully!");
+      onViewChange('home');
     } catch (error) {
       console.error('Sign out error:', error);
-      // Fallback redirect in case of error
-      window.location.href = '/';
+      alert("Error signing out. Redirecting to home.");
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
   const handleJoinClick = () => {
-    if (onLogin) {
-      onLogin('educator');
-    }
+    // Mock join functionality
+    alert("Join functionality - would normally open sign up flow");
+  };
+
+  const handleLoginClick = () => {
+    // Mock login functionality
+    alert("Login functionality - would normally open login flow");
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -40,6 +50,7 @@ export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, sh
       element.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
   return (
     <>
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
@@ -76,6 +87,7 @@ export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, sh
                  onClick={handleSignOut}
                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors mr-4 text-sm font-medium flex items-center"
                  title="Sign Out"
+                 disabled={isSigningOut}
                >
                  {isSigningOut ? (
                    <>
@@ -90,8 +102,6 @@ export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, sh
                  )}
                </button>
              )}
-
-             {/* Admin Button - Always Visible */}
 
               {/* Center Navigation - Only show when showFullNavigation is true */}
               {showFullNavigation && (
@@ -124,7 +134,7 @@ export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, sh
                   </button>
                   
                   <button
-                    onClick={() => window.location.href = '/studio/dashboard'}
+                    onClick={handleLoginClick}
                     className="text-gray-300 hover:text-white font-medium transition-colors"
                   >
                     Login
@@ -157,6 +167,27 @@ export default function Header({ onViewChange, isLoggedIn, userRole, onLogin, sh
               </div>
                </>
               )}
+
+              {/* Demo Controls - You can remove these in production */}
+              <div className="flex items-center space-x-2 ml-4 border-l border-slate-600 pl-4">
+                <button
+                  onClick={() => {
+                    setIsLoggedIn(!isLoggedIn);
+                    setUserRole(isLoggedIn ? null : 'educator');
+                  }}
+                  className="text-xs bg-slate-700 text-white px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+                >
+                  {isLoggedIn ? 'Demo Logout' : 'Demo Login'}
+                </button>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => setUserRole(userRole === 'educator' ? 'student' : 'educator')}
+                    className="text-xs bg-slate-700 text-white px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+                  >
+                    Switch Role
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
