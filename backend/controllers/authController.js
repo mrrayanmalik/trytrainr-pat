@@ -60,11 +60,11 @@ export const studentSignup = async (req, res) => {
 
     // Create student profile
     const { error: studentError } = await supabase
-      .from('students')
-      .insert({
-        user_id: user.id,
-        instructor_id: selectedInstructorId
-      });
+        .from('students')
+        .insert({
+            user_id: user.id,
+            instructor_id: selectedInstructorId || null // Make it nullable
+        });
 
     if (studentError) {
       return res.status(400).json({ error: studentError.message });
