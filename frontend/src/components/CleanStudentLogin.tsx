@@ -13,18 +13,14 @@ import {
 } from "lucide-react";
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-
-const mockInstructors = [
-  { id: "1", business_name: "Tech Academy Pro" },
-  { id: "2", business_name: "Design Masters School" },
-  { id: "3", business_name: "Code Bootcamp Elite" },
-];
+import { useEffect } from 'react';
 
 export default function CleanStudentLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [availableInstructors] = useState(mockInstructors);
+  const [availableInstructors, setAvailableInstructors] = useState<Array<{id: string, business_name: string}>>([]);
+  const [loadingInstructors, setLoadingInstructors] = useState(true);
   const [selectedInstructorId, setSelectedInstructorId] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
@@ -40,6 +36,31 @@ export default function CleanStudentLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    const fetchInstructors = async () => {
+      try {
+        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${API_URL}/api/auth/instructors`);
+        
+        if (response.ok) {
+          const instructors = await response.json();
+          console.log('Fetched instructors:', instructors); // For debugging
+          setAvailableInstructors(instructors);
+        } else {
+          console.error('Failed to fetch instructors');
+          setAvailableInstructors([]);
+        }
+      } catch (error) {
+        console.error('Error fetching instructors:', error);
+        setAvailableInstructors([]);
+      } finally {
+        setLoadingInstructors(false);
+      }
+    };
+
+    fetchInstructors();
+  }, []);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -53,7 +74,7 @@ export default function CleanStudentLogin() {
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match";
       }
-      if (!selectedInstructorId) {
+      if (!selectedInstructorId && availableInstructors.length > 0) {
         newErrors.instructor = "Please select an instructor";
       }
     }
@@ -292,16 +313,20 @@ export default function CleanStudentLogin() {
                       <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <select
                         value={selectedInstructorId}
-                        onChange={(e) =>
-                          setSelectedInstructorId(e.target.value)
-                        }
+                        onChange={(e) => setSelectedInstructorId(e.target.value)}
+                        disabled={loadingInstructors}
                         className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
-                          errors.instructor
-                            ? "border-red-300"
-                            : "border-gray-300"
-                        }`}
+                          errors.instructor ? "border-red-300" : "border-gray-300"
+                        } ${loadingInstructors ? "opacity-50" : ""}`}
                       >
-                        <option value="">Choose an instructor...</option>
+                        <option value="">
+                          {loadingInstructors 
+                            ? "Loading instructors..." 
+                            : availableInstructors.length > 0 
+                              ? "Choose an instructor..." 
+                              : "No instructors available"
+                          }
+                        </option>
                         {availableInstructors.map((instructor) => (
                           <option key={instructor.id} value={instructor.id}>
                             {instructor.business_name}
@@ -310,8 +335,11 @@ export default function CleanStudentLogin() {
                       </select>
                     </div>
                     {errors.instructor && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.instructor}
+                      <p className="text-red-500 text-xs mt-1">{errors.instructor}</p>
+                    )}
+                    {!loadingInstructors && availableInstructors.length === 0 && (
+                      <p className="text-yellow-600 text-xs mt-1">
+                        No instructors available. Ask an instructor to create an account first.
                       </p>
                     )}
                   </div>
