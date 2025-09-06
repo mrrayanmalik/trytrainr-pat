@@ -99,21 +99,39 @@ export default function CleanEducatorSignup() {
     setIsLoading(true);
 
     try {
-      // Simulate account creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      console.log('Educator signup successful:', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        businessName: formData.businessName,
-        subdirectory: formData.subdirectory,
+      const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(`${API_URL}/api/auth/signup/instructor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          businessName: formData.businessName,
+          subdirectory: formData.subdirectory
+        }),
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      // Store the token
+      localStorage.setItem('token', data.token);
+
+      console.log('Instructor signup successful:', data);
+      
       // Navigate to instructor dashboard
       navigate('/dashboard-instructor');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup failed:', error);
+      setErrors({ submit: error.message || 'Signup failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }

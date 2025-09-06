@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
+import router from './router.js'
 
 // Load environment variables
 dotenv.config()
@@ -22,7 +23,11 @@ if (supabaseUrl && supabaseKey) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://localhost:3000'],
+  origin: [
+    'http://localhost:3000',
+    'https://localhost:3000', 
+    process.env.FRONTEND_URL
+  ].filter(Boolean), // Remove any undefined values
   credentials: true
 }))
 app.use(express.json())
@@ -36,13 +41,8 @@ app.get('/', (req, res) => {
   })
 })
 
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: 'API is healthy!',
-    database: supabase ? 'connected' : 'not configured',
-    timestamp: new Date().toISOString()
-  })
-})
+// Use your router for all /api routes
+app.use('/api', router)
 
 // Test database connection
 app.get('/api/test-db', async (req, res) => {
@@ -51,7 +51,6 @@ app.get('/api/test-db', async (req, res) => {
   }
 
   try {
-    // Simple test query - this will work even without tables
     const { data, error } = await supabase.auth.getSession()
     
     if (error) {
@@ -67,15 +66,6 @@ app.get('/api/test-db', async (req, res) => {
     console.error('Database test error:', error)
     res.status(500).json({ error: 'Database connection failed', details: error.message })
   }
-})
-
-// Test auth routes
-app.post('/api/auth/login', (req, res) => {
-  res.json({ message: 'Login endpoint ready' })
-})
-
-app.post('/api/auth/signup', (req, res) => {
-  res.json({ message: 'Signup endpoint ready' })
 })
 
 // Handle 404

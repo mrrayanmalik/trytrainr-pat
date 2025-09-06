@@ -12,8 +12,13 @@ import {
   User,
   Building,
 } from "lucide-react";
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function CleanInstructorLogin() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
     firstName: "",
@@ -68,14 +73,45 @@ export default function CleanInstructorLogin() {
     setErrors({});
 
     try {
-      // Simulate loading
-      setTimeout(() => {
-        setIsLoading(false);
-        console.log("Form would submit:", { mode, formData });
-      }, 2000);
+      if (mode === 'signup') {
+        // INSTRUCTOR SIGNUP - Direct API call
+        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+        
+        const response = await fetch(`${API_URL}/api/auth/signup/instructor`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            businessName: formData.businessName,
+            subdirectory: formData.businessName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        localStorage.setItem('token', data.token);
+        console.log('Instructor signup successful:', data);
+        
+        // Force page refresh to trigger AuthContext check
+        window.location.href = '/dashboard-instructor';
+      } else {
+        // INSTRUCTOR LOGIN - Use AuthContext
+        await login(formData.email, formData.password, 'instructor');
+        navigate('/dashboard-instructor');
+      }
     } catch (error: any) {
+      console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
       setErrors({
-        submit: error.message || "Something went wrong. Please try again.",
+        submit: error.message || `${mode === 'signup' ? 'Signup' : 'Login'} failed. Please try again.`,
       });
     } finally {
       setIsLoading(false);

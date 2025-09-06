@@ -11,6 +11,8 @@ import {
   Award,
   Building,
 } from "lucide-react";
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const mockInstructors = [
   { id: "1", business_name: "Tech Academy Pro" },
@@ -19,6 +21,8 @@ const mockInstructors = [
 ];
 
 export default function CleanStudentLogin() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [availableInstructors] = useState(mockInstructors);
   const [selectedInstructorId, setSelectedInstructorId] = useState("");
@@ -75,24 +79,50 @@ export default function CleanStudentLogin() {
 
     if (!validateForm()) return;
 
-    console.log("StudentAuth: Starting form submission, mode:", mode);
     setIsLoading(true);
+    setErrors({});
 
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false);
-        console.log("Form submitted:", { mode, formData, selectedInstructorId });
-      }, 2000);
+      if (mode === 'signup') {
+        // STUDENT SIGNUP - Direct API call
+        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+        
+        const response = await fetch(`${API_URL}/api/auth/signup/student`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            selectedInstructorId: selectedInstructorId
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        localStorage.setItem('token', data.token);
+        console.log('Student signup successful:', data);
+        
+        // Force page refresh to trigger AuthContext check
+        window.location.href = '/dashboard-student';
+      } else {
+        // STUDENT LOGIN - Use AuthContext
+        await login(formData.email, formData.password, 'student');
+        navigate('/dashboard-student');
+      }
     } catch (error: any) {
-      console.error("StudentAuth: Unexpected error:", error);
+      console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
       setErrors({
-        submit:
-          error.message ||
-          `Failed to ${mode === "login" ? "sign in" : "create account"}`,
+        submit: error.message || `${mode === 'signup' ? 'Signup' : 'Login'} failed. Please try again.`,
       });
     } finally {
-      console.log("StudentAuth: Form submission complete");
       setIsLoading(false);
     }
   };
