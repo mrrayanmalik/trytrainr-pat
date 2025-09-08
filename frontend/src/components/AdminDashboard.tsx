@@ -62,7 +62,7 @@ const AdminDashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-2xl font-bold text-gray-900">347</p>
                 <p className="text-gray-600 text-sm">Active Instructors</p>
-              </div>
+              </div> 
             </div>
           </div>
 
