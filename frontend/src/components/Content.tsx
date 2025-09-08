@@ -267,7 +267,7 @@ export default function Content() {
     { id: 'content-creation', title: 'Content Creation', items: contentItems.filter(item => item.stage === 'content-creation') },
     { id: 'review', title: 'Review', items: contentItems.filter(item => item.stage === 'review') },
     { id: 'ready-to-publish', title: 'Ready to Publish', items: contentItems.filter(item => item.stage === 'ready-to-publish') },
-    { id: 'published', title: 'Published', items: contentItems.filter(item => item.stage === 'published') }
+    { id: 'publishede', title: 'Published', items: contentItems.filter(item => item.stage === 'published') }
   ];
 
   const handleCreateContent = () => {
