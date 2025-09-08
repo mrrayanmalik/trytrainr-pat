@@ -21,15 +21,32 @@ if (supabaseUrl && supabaseKey) {
   console.log('⚠️  Supabase credentials not found. Some features may not work.')
 }
 
-// Middleware
+// Enhanced CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://localhost:3000',
+  'https://trytrainr1.netlify.app', // Remove trailing slash and hardcode for production
+  process.env.FRONTEND_URL?.replace(/\/$/, ''), // Remove trailing slash if present
+].filter(Boolean)
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'https://localhost:3000', 
-    process.env.FRONTEND_URL
-  ].filter(Boolean), // Remove any undefined values
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      console.log('CORS blocked origin:', origin)
+      console.log('Allowed origins:', allowedOrigins)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
+
 app.use(express.json())
 
 // Routes
@@ -37,7 +54,8 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'TRAINR-PAT Backend running!',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    allowedOrigins: allowedOrigins
   })
 })
 
@@ -83,6 +101,7 @@ const PORT = process.env.PORT || 5000
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`🔗 Allowed origins:`, allowedOrigins)
   if (supabaseUrl) {
     console.log(`📊 Database: ${supabaseUrl}`)
   }
