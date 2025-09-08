@@ -73,26 +73,42 @@ export const createCourse = async (req, res) => {
   }
 };
 
-// Update course
+// Update course - FIXED
 export const updateCourse = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const { courseId } = req.params;
-    const updateData = req.body;
+    const { title, description, category, level, type, price, thumbnailUrl, publishImmediately } = req.body;
+
+    // Prepare update data with proper field mapping
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (level !== undefined) updateData.level = level;
+    if (type !== undefined) updateData.type = type;
+    if (price !== undefined) updateData.price = type === 'paid' ? price : 0;
+    if (thumbnailUrl !== undefined) updateData.thumbnail_url = thumbnailUrl;
+    if (publishImmediately !== undefined) updateData.is_published = publishImmediately;
 
     const { data: course, error } = await supabase
       .from('courses')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', courseId)
       .eq('instructor_id', req.user.instructors[0].id)
       .select()
       .single();
 
     if (error) {
+      console.error('Update course error:', error);
       return res.status(400).json({ error: error.message });
+    }
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found or unauthorized' });
     }
 
     res.json(course);
@@ -252,14 +268,18 @@ export const updateModule = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const { moduleId } = req.params;
-    const updateData = req.body;
+    const { title, description } = req.body;
+
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
 
     const { data: module, error } = await supabase
       .from('modules')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', moduleId)
       .select(`
         *,
@@ -267,7 +287,7 @@ export const updateModule = async (req, res) => {
       `)
       .single();
 
-    if (error || module.courses.instructor_id !== req.user.instructors[0].id) {
+    if (error || !module || module.courses.instructor_id !== req.user.instructors[0].id) {
       return res.status(400).json({ error: 'Module not found or unauthorized' });
     }
 
@@ -377,14 +397,23 @@ export const updateLesson = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const { lessonId } = req.params;
-    const updateData = req.body;
+    const { title, description, videoUrl, duration, resourceUrl, additionalContent, allowPreview } = req.body;
+
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (videoUrl !== undefined) updateData.video_url = videoUrl;
+    if (duration !== undefined) updateData.duration = duration;
+    if (resourceUrl !== undefined) updateData.resource_url = resourceUrl;
+    if (additionalContent !== undefined) updateData.additional_content = additionalContent;
+    if (allowPreview !== undefined) updateData.allow_preview = allowPreview;
 
     const { data: lesson, error } = await supabase
       .from('lessons')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', lessonId)
       .select(`
         *,
@@ -394,7 +423,7 @@ export const updateLesson = async (req, res) => {
       `)
       .single();
 
-    if (error || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
+    if (error || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
       return res.status(400).json({ error: 'Lesson not found or unauthorized' });
     }
 
