@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import InstructorSidebar from './InstructorSidebar';
+import ManageCourses from './ManageCourses';
 import { 
   TrendingUp, 
   Users, 
@@ -335,7 +336,7 @@ const CleanInstructorDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-
+            
             {/* Top Courses and Recent Activity */}
             <div className="grid lg:grid-cols-2 gap-8 mb-8">
               {/* Top Performing Courses */}
@@ -538,6 +539,7 @@ const CleanInstructorDashboard: React.FC = () => {
           </div>
         )}
 
+        {currentView === 'courses' && <ManageCourses />}
         {/* Other Views Placeholder */}
         {currentView !== 'dashboard' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
