@@ -28,10 +28,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Redirect based on user role
-    const redirectMap = {
-      instructor: '/dashboard-instructor',
-      student: '/dashboard-student',
+    // Redirect based on user role - FIXED PATHS
+    const redirectMap: { [key: string]: string } = {
+      instructor: '/instructor',
+      student: '/student',
       admin: '/admin'
     };
     return <Navigate to={redirectMap[user.role] || '/'} replace />;

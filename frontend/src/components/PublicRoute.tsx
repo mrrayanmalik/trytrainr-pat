@@ -17,11 +17,11 @@ const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
     );
   }
 
-  // If user is logged in, redirect to their dashboard
+  // If user is logged in, redirect to their dashboard - FIXED PATHS
   if (user) {
-    const redirectMap = {
-      instructor: '/dashboard-instructor',
-      student: '/dashboard-student',
+    const redirectMap: { [key: string]: string } = {
+      instructor: '/instructor',
+      student: '/student',
       admin: '/admin'
     };
     return <Navigate to={redirectMap[user.role] || '/'} replace />;

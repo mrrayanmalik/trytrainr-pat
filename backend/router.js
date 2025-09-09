@@ -21,6 +21,14 @@ import {
   updateLesson,
   deleteLesson
 } from './controllers/courseController.js';
+import {
+  getAvailableCourses,
+  getEnrolledCourses,
+  enrollInCourse,
+  getStudentCourseContent,
+  updateLessonProgress,
+  getStudentCommunity
+} from './controllers/studentCourseController.js';
 import { authenticateToken, requireRole } from './middleware/auth.js';
 
 const router = express.Router();
@@ -33,7 +41,7 @@ router.get('/auth/me', authenticateToken, getCurrentUser);
 router.get('/auth/check-subdirectory/:subdirectory', checkSubdirectory);
 router.get('/auth/instructors', getInstructors);
 
-// Course routes (protected, instructor only)
+// Instructor Course routes (protected, instructor only)
 router.get('/courses', authenticateToken, requireRole(['instructor']), getCourses);
 router.post('/courses', authenticateToken, requireRole(['instructor']), createCourse);
 router.get('/courses/:courseId', authenticateToken, requireRole(['instructor']), getCourseContent);
@@ -41,15 +49,23 @@ router.put('/courses/:courseId', authenticateToken, requireRole(['instructor']),
 router.delete('/courses/:courseId', authenticateToken, requireRole(['instructor']), deleteCourse);
 router.patch('/courses/:courseId/toggle-publication', authenticateToken, requireRole(['instructor']), toggleCoursePublication);
 
-// Module routes
+// Module routes (instructor only)
 router.post('/courses/:courseId/modules', authenticateToken, requireRole(['instructor']), createModule);
 router.put('/modules/:moduleId', authenticateToken, requireRole(['instructor']), updateModule);
 router.delete('/modules/:moduleId', authenticateToken, requireRole(['instructor']), deleteModule);
 
-// Lesson routes
+// Lesson routes (instructor only)
 router.post('/modules/:moduleId/lessons', authenticateToken, requireRole(['instructor']), createLesson);
 router.put('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), updateLesson);
 router.delete('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), deleteLesson);
+
+// Student Course routes (protected, student only)
+router.get('/student/community', authenticateToken, requireRole(['student']), getStudentCommunity);
+router.get('/student/courses/available', authenticateToken, requireRole(['student']), getAvailableCourses);
+router.get('/student/courses/enrolled', authenticateToken, requireRole(['student']), getEnrolledCourses);
+router.post('/student/courses/:courseId/enroll', authenticateToken, requireRole(['student']), enrollInCourse);
+router.get('/student/courses/:courseId/content', authenticateToken, requireRole(['student']), getStudentCourseContent);
+router.put('/student/lessons/:lessonId/progress', authenticateToken, requireRole(['student']), updateLessonProgress);
 
 // Test routes
 router.get('/health', (req, res) => {

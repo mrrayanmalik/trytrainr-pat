@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -29,46 +29,83 @@ import {
   Zap, 
   Loader2 
 } from 'lucide-react';
+import { studentCourseService, StudentCourse } from '../services/studentCourseService';
+import StudentLearningView from './StudentLearningView';
 
 const CleanStudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [progress] = useState({
-    coursesEnrolled: 3,
-    coursesCompleted: 1,
-    totalHours: 24,
-    currentStreak: 7,
+  const [enrolledCourses, setEnrolledCourses] = useState<StudentCourse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [progress, setProgress] = useState({
+    coursesEnrolled: 0,
+    coursesCompleted: 0,
+    totalHours: 0,
+    currentStreak: 7, // This could be calculated based on actual progress
   });
 
-  const enrolledCourses = [
-    {
-      id: 1,
-      title: "Web Development Fundamentals",
-      instructor: "Test Instructor",
-      progress: 65,
-      totalLessons: 24,
-      completedLessons: 16,
-      image: "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400",
-    },
-    {
-      id: 2,
-      title: "Advanced JavaScript",
-      instructor: "Test Instructor",
-      progress: 30,
-      totalLessons: 18,
-      completedLessons: 5,
-      image: "https://images.pexels.com/photos/1181676/pexels-photo-1181676.jpeg?auto=compress&cs=tinysrgb&w=400",
-    },
-    {
-      id: 3,
-      title: "React Masterclass",
-      instructor: "Test Instructor",
-      progress: 85,
-      totalLessons: 32,
-      completedLessons: 27,
-      image: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=400",
-    },
-  ];
+  useEffect(() => {
+    loadEnrolledCourses();
+  }, []);
+
+  const loadEnrolledCourses = async () => {
+    try {
+      setLoading(true);
+      const courses = await studentCourseService.getEnrolledCourses();
+      setEnrolledCourses(courses);
+      
+      // Calculate progress stats
+      const completedCourses = courses.filter(course => course.progressPercentage === 100).length;
+      const totalHours = courses.reduce((sum, course) => {
+        // Estimate hours based on lessons (assuming 10 minutes per lesson)
+        return sum + ((course.totalLessons || 0) * 10 / 60);
+      }, 0);
+
+      setProgress({
+        coursesEnrolled: courses.length,
+        coursesCompleted: completedCourses,
+        totalHours: Math.round(totalHours),
+        currentStreak: 7, // This would come from actual streak tracking
+      });
+    } catch (error) {
+      console.error('Error loading enrolled courses:', error);
+      // Fallback to show empty state instead of error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCourseClick = (courseId: string) => {
+    setSelectedCourseId(courseId);
+  };
+
+  const handleBackFromCourse = () => {
+    setSelectedCourseId(null);
+    // Reload courses to get updated progress
+    loadEnrolledCourses();
+  };
+
+  // If viewing a specific course, show the learning view
+  if (selectedCourseId) {
+    return (
+      <StudentLearningView 
+        courseId={selectedCourseId} 
+        onBack={handleBackFromCourse}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your courses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -129,53 +166,70 @@ const CleanStudentDashboard: React.FC = () => {
       </div>
 
       {/* Course Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {enrolledCourses.map((course) => (
-          <div
-            key={course.id}
-            className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+      {enrolledCourses.length === 0 ? (
+        <div className="text-center py-12">
+          <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses enrolled yet</h3>
+          <p className="text-gray-600 mb-6">Browse available courses in your community to get started</p>
+          <button
+            onClick={() => navigate("/student/community")}
+            className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
           >
-            <div className="relative">
-              <img
-                src={course.image}
-                alt={course.title}
-                className="w-full h-48 object-cover"
-              />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300">
-                <button className="bg-white/95 backdrop-blur-sm p-4 rounded-full hover:bg-white hover:scale-110 transition-all duration-300">
-                  <Play className="w-8 h-8 text-blue-600" />
-                </button>
-              </div>
-              <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                {course.progress}% Complete
-              </div>
-            </div>
-
-            <div className="p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
-              <p className="text-gray-600 mb-4">by {course.instructor}</p>
-
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-6">
-                <span>{course.completedLessons}/{course.totalLessons} lessons</span>
-                <span className="font-medium">{course.progress}% complete</span>
-              </div>
-
-              <div className="mb-6">
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${course.progress}%` }}
-                  ></div>
+            Browse Courses
+          </button>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {enrolledCourses.map((course) => (
+            <div
+              key={course.id}
+              className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+              onClick={() => handleCourseClick(course.id)}
+            >
+              <div className="relative">
+                <img
+                  src={course.thumbnail_url || "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400"}
+                  alt={course.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300">
+                  <button className="bg-white/95 backdrop-blur-sm p-4 rounded-full hover:bg-white hover:scale-110 transition-all duration-300">
+                    <Play className="w-8 h-8 text-blue-600" />
+                  </button>
+                </div>
+                <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  {course.progressPercentage || 0}% Complete
                 </div>
               </div>
 
-              <button className="w-full bg-gradient-to-r from-blue-500 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300">
-                Continue Learning
-              </button>
+              <div className="p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
+                <p className="text-gray-600 mb-4">
+                  by {course.instructor ? `${course.instructor.firstName} ${course.instructor.lastName}` : 'Instructor'}
+                </p>
+
+                <div className="flex items-center justify-between text-sm text-gray-600 mb-6">
+                  <span>{course.completedLessons || 0}/{course.totalLessons || 0} lessons</span>
+                  <span className="font-medium">{course.progressPercentage || 0}% complete</span>
+                </div>
+
+                <div className="mb-6">
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${course.progressPercentage || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <button className="w-full bg-gradient-to-r from-blue-500 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300">
+                  Continue Learning
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-8">
