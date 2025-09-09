@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Play, Clock, FileText, Video, ExternalLink, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Play, Clock, FileText, Video, ExternalLink, Eye, BookOpen, Users } from 'lucide-react';
 import { courseService, Course, Module, Lesson } from '../services/courseService';
+import CourseLearningView from './CourseLearningView';
 
 interface CourseContentManagerProps {
   courseId: string;
@@ -10,6 +11,7 @@ interface CourseContentManagerProps {
 const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, onBack }) => {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showLearningView, setShowLearningView] = useState(false);
   
   // Module modal states
   const [showModuleModal, setShowModuleModal] = useState(false);
@@ -29,12 +31,19 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
   const [lessonAdditionalContent, setLessonAdditionalContent] = useState('');
   const [lessonAllowPreview, setLessonAllowPreview] = useState(false);
 
-  // Lesson view modal
-  const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
-
   useEffect(() => {
     loadCourseContent();
   }, [courseId]);
+
+  // If showing learning view, render that component
+  if (showLearningView) {
+    return (
+      <CourseLearningView 
+        courseId={courseId}
+        onBack={() => setShowLearningView(false)}
+      />
+    );
+  }
 
   const loadCourseContent = async () => {
     try {
@@ -98,8 +107,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     setShowLessonModal(true);
   };
 
-  const handleCreateModule = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateModule = async () => {
     if (!moduleTitle.trim()) {
       alert('Module title is required');
       return;
@@ -119,8 +127,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     }
   };
 
-  const handleEditModule = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditModule = async () => {
     if (!editingModule || !moduleTitle.trim()) {
       alert('Module title is required');
       return;
@@ -154,8 +161,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     }
   };
 
-  const handleCreateLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateLesson = async () => {
     if (!selectedModuleId || !lessonTitle.trim()) {
       alert('Lesson title is required');
       return;
@@ -192,8 +198,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     }
   };
 
-  const handleEditLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditLesson = async () => {
     if (!editingLesson || !lessonTitle.trim()) {
       alert('Lesson title is required');
       return;
@@ -257,6 +262,14 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const getTotalLessons = () => {
+    return course?.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
+  };
+
+  const hasContent = () => {
+    return course?.modules && course.modules.length > 0 && getTotalLessons() > 0;
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -293,17 +306,44 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
         </button>
         
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
             <p className="text-gray-600 mt-2">Manage course content and structure</p>
+            <div className="flex items-center space-x-4 mt-3 text-sm text-gray-600">
+              <div className="flex items-center space-x-1">
+                <BookOpen className="w-4 h-4" />
+                <span>{course.modules?.length || 0} modules</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Play className="w-4 h-4" />
+                <span>{getTotalLessons()} lessons</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Users className="w-4 h-4" />
+                <span>{course.type === 'free' ? 'Free' : `$${course.price}`}</span>
+              </div>
+            </div>
           </div>
-          <button 
-            onClick={openCreateModuleModal}
-            className="mt-4 lg:mt-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>{!course.modules || course.modules.length === 0 ? 'Add First Module' : 'Add New Module'}</span>
-          </button>
+          
+          <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+            {hasContent() && (
+              <button
+                onClick={() => setShowLearningView(true)}
+                className="bg-green-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <Play className="w-5 h-5" />
+                <span>Preview Course</span>
+              </button>
+            )}
+            
+            <button 
+              onClick={openCreateModuleModal}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+            >
+              <Plus className="w-5 h-5" />
+              <span>{!course.modules || course.modules.length === 0 ? 'Add First Module' : 'Add New Module'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -432,14 +472,6 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                             
                             <div className="flex items-center space-x-2 ml-4">
                               <button 
-                                onClick={() => setViewingLesson(lesson)}
-                                className="p-2 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors" 
-                                title="View Lesson"
-                              >
-                                <Eye className="w-4 h-4 text-blue-600" />
-                              </button>
-                              
-                              <button 
                                 onClick={() => openEditLessonModal(lesson)}
                                 className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" 
                                 title="Edit Lesson"
@@ -486,7 +518,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
               </button>
             </div>
 
-            <form onSubmit={editingModule ? handleEditModule : handleCreateModule} className="p-6 space-y-6">
+            <div className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Module Title *
@@ -516,7 +548,6 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
 
               <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
-                  type="button"
                   onClick={() => {
                     setShowModuleModal(false);
                     resetModuleForm();
@@ -526,13 +557,13 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  onClick={editingModule ? handleEditModule : handleCreateModule}
                   className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
                 >
                   {editingModule ? 'Save Changes' : 'Add Module'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -556,7 +587,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
               </button>
             </div>
 
-            <form onSubmit={editingLesson ? handleEditLesson : handleCreateLesson} className="p-6 space-y-6">
+            <div className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Lesson Title *
@@ -656,7 +687,6 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
 
               <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
-                  type="button"
                   onClick={() => {
                     setShowLessonModal(false);
                     resetLessonForm();
@@ -666,93 +696,10 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  onClick={editingLesson ? handleEditLesson : handleCreateLesson}
                   className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
                 >
                   {editingLesson ? 'Save Changes' : 'Add Lesson'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Lesson Modal */}
-      {viewingLesson && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-gray-200">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Lesson Details</h2>
-              <button
-                onClick={() => setViewingLesson(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <span className="text-2xl">&times;</span>
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{viewingLesson.title}</h3>
-                {viewingLesson.description && (
-                  <p className="text-gray-600">{viewingLesson.description}</p>
-                )}
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Duration:</span>
-                  <span className="ml-2 text-gray-600">{formatDuration(viewingLesson.duration)}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Preview:</span>
-                  <span className="ml-2 text-gray-600">{viewingLesson.allow_preview ? 'Allowed' : 'Not allowed'}</span>
-                </div>
-              </div>
-
-              {viewingLesson.video_url && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Video URL</label>
-                  <a 
-                    href={viewingLesson.video_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-purple-600 hover:text-purple-700 underline break-all"
-                  >
-                    {viewingLesson.video_url}
-                  </a>
-                </div>
-              )}
-
-              {viewingLesson.resource_url && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Resource URL</label>
-                  <a 
-                    href={viewingLesson.resource_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-purple-600 hover:text-purple-700 underline break-all"
-                  >
-                    {viewingLesson.resource_url}
-                  </a>
-                </div>
-              )}
-
-              {viewingLesson.additional_content && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Additional Content</label>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-700 whitespace-pre-wrap">{viewingLesson.additional_content}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-6 border-t border-gray-200">
-                <button
-                  onClick={() => setViewingLesson(null)}
-                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Close
                 </button>
               </div>
             </div>
