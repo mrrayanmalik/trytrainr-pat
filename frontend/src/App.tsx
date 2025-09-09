@@ -6,10 +6,26 @@ import CleanStudentLogin from "./components/CleanStudentLogin";
 import CleanInstructorLogin from "./components/CleanInstructorLogin";
 import CleanEducatorSignup from "./components/CleanEducatorSignup";
 import CleanStudentSignup from "./components/CleanStudentSignup";
-import CleanStudentDashboard from "./components/CleanStudentDashboard";
-import CleanInstructorDashboard from "./components/CleanInstructorDashboard";
-import AdminDashboard from "./components/AdminDashboard";
 import PublicRoute from "./components/PublicRoute";
+
+// Import instructor components
+import InstructorLayout from "./components/InstructorLayout";
+import CleanInstructorDashboard from "./components/CleanInstructorDashboard";
+import ManageCourses from "./components/ManageCourses";
+import InstructorSales from "./components/InstructorSales";
+import InstructorStudents from "./components/InstructorStudents";
+import InstructorWebsite from "./components/InstructorWebsite";
+import InstructorSettings from "./components/InstructorSettings";
+
+// Import student components
+import StudentLayout from "./components/StudentLayout";
+import CleanStudentDashboard from "./components/CleanStudentDashboard";
+import StudentCommunity from "./components/StudentCommunity";
+import StudentLiveCalls from "./components/StudentLiveCalls";
+import StudentProgress from "./components/StudentProgress";
+import StudentSettings from "./components/StudentSettings";
+
+import AdminDashboard from "./components/AdminDashboard";
 
 // Component to handle redirects based on user role
 const AuthRedirect: React.FC = () => {
@@ -26,9 +42,9 @@ const AuthRedirect: React.FC = () => {
   if (user) {
     switch (user.role) {
       case 'instructor':
-        return <Navigate to="/dashboard-instructor" replace />;
+        return <Navigate to="/instructor" replace />;
       case 'student':
-        return <Navigate to="/dashboard-student" replace />;
+        return <Navigate to="/student" replace />;
       case 'admin':
         return <Navigate to="/admin" replace />;
       default:
@@ -82,23 +98,42 @@ function App() {
               }
             />
             
-            {/* Protected routes */}
+            {/* Instructor Protected Routes */}
             <Route
-              path="/dashboard-instructor"
+              path="/instructor"
               element={
                 <ProtectedRoute allowedRoles={['instructor']}>
-                  <CleanInstructorDashboard />
+                  <InstructorLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<CleanInstructorDashboard />} />
+              <Route path="courses" element={<ManageCourses />} />
+              <Route path="sales" element={<InstructorSales />} />
+              <Route path="students" element={<InstructorStudents />} />
+              <Route path="website" element={<InstructorWebsite />} />
+              <Route path="settings" element={<InstructorSettings />} />
+            </Route>
+            
+            {/* Student Protected Routes */}
             <Route
-              path="/dashboard-student"
+              path="/student"
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <CleanStudentDashboard />
+                  <StudentLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<Navigate to="courses" replace />} />
+              <Route path="courses" element={<CleanStudentDashboard />} />
+              <Route path="community" element={<StudentCommunity />} />
+              <Route path="live-calls" element={<StudentLiveCalls />} />
+              <Route path="progress" element={<StudentProgress />} />
+              <Route path="settings" element={<StudentSettings />} />
+            </Route>
+            
+            {/* Admin Protected Routes */}
             <Route
               path="/admin"
               element={

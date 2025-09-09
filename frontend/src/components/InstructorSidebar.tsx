@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -12,16 +13,10 @@ import {
   ChevronDown
 } from 'lucide-react';
 
-interface InstructorSidebarProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
-}
-
-const InstructorSidebar: React.FC<InstructorSidebarProps> = ({ 
-  currentView, 
-  onViewChange 
-}) => {
+const InstructorSidebar: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState<{ [key: string]: boolean }>({});
 
   const toggleMenu = (menuKey: string) => {
@@ -36,33 +31,50 @@ const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
       key: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
+      path: '/instructor/dashboard',
       hasSubmenu: false
     },
     {
       key: 'courses',
       label: 'Courses',
       icon: BookOpen,
+      path: '/instructor/courses',
       hasSubmenu: false
     },
     {
       key: 'sales',
       label: 'Sales',
       icon: DollarSign,
+      path: '/instructor/sales',
       hasSubmenu: false
     },
     {
       key: 'students',
       label: 'Students',
       icon: Users,
+      path: '/instructor/students',
       hasSubmenu: false
     },
     {
       key: 'website',
       label: 'Website',
       icon: Globe,
+      path: '/instructor/website',
       hasSubmenu: false
     }
   ];
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
+  const handleNavigation = (path: string, hasSubmenu: boolean = false) => {
+    if (hasSubmenu) {
+      toggleMenu(path);
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-20 flex flex-col">
@@ -86,15 +98,9 @@ const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
           {menuItems.map((item) => (
             <div key={item.key}>
               <button
-                onClick={() => {
-                  if (item.hasSubmenu) {
-                    toggleMenu(item.key);
-                  } else {
-                    onViewChange(item.key);
-                  }
-                }}
+                onClick={() => handleNavigation(item.path, item.hasSubmenu)}
                 className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  currentView === item.key || (item.hasSubmenu && expandedMenus[item.key])
+                  isActive(item.path) || (item.hasSubmenu && expandedMenus[item.key])
                     ? 'bg-purple-50 text-purple-700'
                     : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                 }`}
@@ -118,9 +124,9 @@ const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
       {/* Bottom Menu Items */}
       <div className="space-y-1 px-3 py-4 border-t border-gray-200">
         <button
-          onClick={() => onViewChange('settings')}
+          onClick={() => navigate('/instructor/settings')}
           className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-            currentView === 'settings'
+            isActive('/instructor/settings')
               ? 'bg-purple-50 text-purple-700'
               : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
           }`}
@@ -130,12 +136,8 @@ const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
         </button>
         
         <button
-          onClick={() => onViewChange('support')}
-          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-            currentView === 'support'
-              ? 'bg-purple-50 text-purple-700'
-              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
-          }`}
+          onClick={() => alert('Support page coming soon!')}
+          className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         >
           <HelpCircle size={20} className="flex-shrink-0" />
           <span className="ml-3 flex-1 text-left">Support</span>

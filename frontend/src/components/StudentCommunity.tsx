@@ -1,0 +1,560 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  BookOpen, 
+  MessageCircle, 
+  Star, 
+  Users, 
+  Bell, 
+  MoreVertical, 
+  Send, 
+  Camera, 
+  Eye, 
+  FileText, 
+  Loader2,
+  ArrowLeft
+} from 'lucide-react';
+
+// Mock data
+const MOCK_DATA = {
+  communityPosts: [
+    {
+      id: 1,
+      author: "John Doe",
+      avatar: "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100",
+      content: "Just completed the React Hooks module! The useState examples were really helpful. Anyone else working through this?",
+      timestamp: "2 hours ago",
+      likes: 12,
+      replies: 5,
+      course: "React Masterclass",
+      courseId: 3,
+      type: "discussion"
+    },
+    {
+      id: 2,
+      author: "Sarah Johnson",
+      avatar: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100",
+      content: "Quick question about async/await in the JavaScript course. How do you handle multiple API calls efficiently?",
+      timestamp: "4 hours ago",
+      likes: 8,
+      replies: 12,
+      course: "Advanced JavaScript",
+      courseId: 2,
+      type: "discussion"
+    }
+  ],
+  announcements: [
+    {
+      id: 1,
+      author: "Test Instructor",
+      avatar: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100",
+      title: "New Assignment Released - React Components",
+      content: "I've just released a new assignment focusing on React component composition. Please check the course materials and submit by Friday.",
+      timestamp: "1 hour ago",
+      course: "React Masterclass",
+      courseId: 3,
+      priority: "high"
+    }
+  ],
+  chatMessages: [
+    {
+      id: 1,
+      author: "Alex Rodriguez",
+      avatar: "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100",
+      message: "Hey everyone! Anyone working on the portfolio project?",
+      timestamp: "10:45 AM",
+      courseId: 1
+    }
+  ]
+};
+
+const MOCK_AVAILABLE_COURSES = [
+  {
+    id: 4,
+    title: "Python for Beginners",
+    description: "Learn Python programming from scratch with hands-on projects and real-world examples.",
+    image_url: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400",
+    type: "free",
+    level: "Beginner",
+    lessons: new Array(20).fill({}),
+    course_analytics: [{ total_students: 156 }]
+  }
+];
+
+const StudentCommunity: React.FC = () => {
+  const { user } = useAuth();
+  const [selectedCommunity, setSelectedCommunity] = useState<number | null>(null);
+  const [communityTab, setCommunityTab] = useState<'announcements' | 'discussions' | 'browse-courses' | 'chat'>('announcements');
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+
+  const enrolledCourses = [
+    {
+      id: 1,
+      title: "Web Development Fundamentals",
+      instructor: "Test Instructor",
+      image: "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400",
+    },
+    {
+      id: 2,
+      title: "Advanced JavaScript",
+      instructor: "Test Instructor",
+      image: "https://images.pexels.com/photos/1181676/pexels-photo-1181676.jpeg?auto=compress&cs=tinysrgb&w=400",
+    },
+    {
+      id: 3,
+      title: "React Masterclass",
+      instructor: "Test Instructor",
+      image: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=400",
+    },
+  ];
+
+  useEffect(() => {
+    loadAvailableCourses();
+  }, []);
+
+  const loadAvailableCourses = async () => {
+    setIsLoadingCourses(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAvailableCourses(MOCK_AVAILABLE_COURSES);
+    } catch (error) {
+      console.error('Error loading available courses:', error);
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  const getFilteredContent = (courseId: number, type: string): any[] => {
+    switch (type) {
+      case 'announcements':
+        return MOCK_DATA.announcements.filter(item => item.courseId === courseId);
+      case 'discussions':
+        return MOCK_DATA.communityPosts.filter(item => item.courseId === courseId);
+      case 'chat':
+        return MOCK_DATA.chatMessages.filter(item => item.courseId === courseId);
+      default:
+        return [];
+    }
+  };
+
+  return (
+    <div>
+      {!selectedCommunity ? (
+        <div>
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Course Communities</h2>
+            <p className="text-gray-600 mt-2">Join discussions for your enrolled courses</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Active Communities</p>
+                  <p className="text-3xl font-bold text-blue-900">{enrolledCourses.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border border-green-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Your Posts</p>
+                  <p className="text-3xl font-bold text-green-900">12</p>
+                </div>
+                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-sm border border-purple-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-purple-600 font-medium">Reputation Points</p>
+                  <p className="text-3xl font-bold text-purple-900">847</p>
+                </div>
+                <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                  <Star className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {enrolledCourses.map((course) => {
+              const courseAnnouncements = MOCK_DATA.announcements.filter(a => a.courseId === course.id);
+              const courseDiscussions = MOCK_DATA.communityPosts.filter(p => p.courseId === course.id);
+              const recentActivity = courseAnnouncements.length + courseDiscussions.length;
+
+              return (
+                <div
+                  key={course.id}
+                  onClick={() => setSelectedCommunity(course.id)}
+                  className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
+                >
+                  <div className="relative">
+                    <img
+                      src={course.image}
+                      alt={course.title}
+                      className="w-full h-32 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300"></div>
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h3 className="text-white font-bold text-lg mb-1">{course.title}</h3>
+                      <p className="text-white/80 text-sm">by {course.instructor}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{courseAnnouncements.length}</div>
+                        <div className="text-xs text-gray-500">Announcements</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{courseDiscussions.length}</div>
+                        <div className="text-xs text-gray-500">Discussions</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {MOCK_DATA.chatMessages.filter(m => m.courseId === course.id).length}
+                        </div>
+                        <div className="text-xs text-gray-500">Messages</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-6">
+                      <span>{recentActivity} recent activities</span>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Active</span>
+                      </div>
+                    </div>
+
+                    <button className="w-full mt-4 bg-gradient-to-r from-blue-500 to-green-500 text-white py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300 group-hover:from-blue-600 group-hover:to-green-600">
+                      Join Discussion
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div>
+          {(() => {
+            const selectedCourse = enrolledCourses.find(c => c.id === selectedCommunity);
+            return (
+              <>
+                <div className="mb-8">
+                  <button
+                    onClick={() => setSelectedCommunity(null)}
+                    className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5 mr-2" />
+                    Back to Communities
+                  </button>
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={selectedCourse?.image}
+                      alt={selectedCourse?.title}
+                      className="w-16 h-16 rounded-xl object-cover"
+                    />
+                    <div>
+                      <h2 className="text-3xl font-bold text-gray-900">{selectedCourse?.title}</h2>
+                      <p className="text-gray-600">Community • {selectedCourse?.instructor}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-xl">
+                  {[
+                    { id: 'announcements', label: 'Announcements', icon: Bell },
+                    { id: 'discussions', label: 'Discussions', icon: MessageCircle },
+                    { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen },
+                    { id: 'chat', label: 'Live Chat', icon: Users }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setCommunityTab(tab.id as any)}
+                      className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                        communityTab === tab.id
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <tab.icon className="w-5 h-5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {communityTab === 'announcements' && (
+                  <div className="space-y-6">
+                    {getFilteredContent(selectedCommunity, 'announcements').map((announcement: any) => (
+                      <div key={announcement.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-start space-x-4">
+                          <img
+                            src={announcement.avatar}
+                            alt={announcement.author}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-3">
+                                <h4 className="font-semibold text-gray-900">{announcement.author}</h4>
+                                <span className="text-blue-600 text-sm font-medium bg-blue-100 px-2 py-1 rounded-full">
+                                  Instructor
+                                </span>
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                  announcement.priority === 'high' ? 'bg-red-100 text-red-600' :
+                                  announcement.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {announcement.priority} priority
+                                </span>
+                              </div>
+                              <span className="text-sm text-gray-500">{announcement.timestamp}</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">{announcement.title}</h3>
+                            <p className="text-gray-700">{announcement.content}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {communityTab === 'discussions' && (
+                  <div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Start a discussion</h3>
+                      <div className="flex items-start space-x-4">
+                        <img
+                          src="https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100"
+                          alt="Your avatar"
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <textarea
+                            placeholder="Ask a question, share your progress, or help other students..."
+                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center space-x-4">
+                              <button className="text-gray-500 hover:text-blue-600 transition-colors">
+                                <Camera className="w-5 h-5" />
+                              </button>
+                              <button className="text-gray-500 hover:text-green-600 transition-colors">
+                                <FileText className="w-5 h-5" />
+                              </button>
+                            </div>
+                            <button 
+                              onClick={() => alert("Post discussion functionality")}
+                              className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                            >
+                              Post Discussion
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {getFilteredContent(selectedCommunity, 'discussions').map((post: any) => (
+                        <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300">
+                          <div className="flex items-start space-x-4">
+                            <img
+                              src={post.avatar}
+                              alt={post.author}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-3">
+                                  <h4 className="font-semibold text-gray-900">{post.author}</h4>
+                                  <span className="text-gray-500 text-sm">{post.timestamp}</span>
+                                </div>
+                                <button className="text-gray-400 hover:text-gray-600">
+                                  <MoreVertical className="w-5 h-5" />
+                                </button>
+                              </div>
+                              <p className="text-gray-700 mb-4">{post.content}</p>
+                              <div className="flex items-center space-x-6 text-sm text-gray-500">
+                                <button className="flex items-center space-x-2 hover:text-blue-600 transition-colors">
+                                  <Star className="w-4 h-4" />
+                                  <span>{post.likes} likes</span>
+                                </button>
+                                <button className="flex items-center space-x-2 hover:text-green-600 transition-colors">
+                                  <MessageCircle className="w-4 h-4" />
+                                  <span>{post.replies} replies</span>
+                                </button>
+                                <button className="flex items-center space-x-2 hover:text-purple-600 transition-colors">
+                                  <Send className="w-4 h-4" />
+                                  <span>Share</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {communityTab === 'browse-courses' && (
+                  <div>
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">Available Courses from Your Instructor</h3>
+                      <p className="text-gray-600">Discover and enroll in courses offered by your instructor</p>
+                    </div>
+
+                    {isLoadingCourses ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                          <p className="text-gray-600">Loading courses...</p>
+                        </div>
+                      </div>
+                    ) : availableCourses.length === 0 ? (
+                      <div className="text-center py-12">
+                        <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available yet</h3>
+                        <p className="text-gray-600">Your instructor hasn't published any courses yet.</p>
+                      </div>
+                    ) : (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {availableCourses.map((course) => (
+                          <div key={course.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                            <div className="relative">
+                              <img
+                                src={course.image_url}
+                                alt={course.title}
+                                className="w-full h-48 object-cover"
+                              />
+                              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                                <span className={`text-sm font-medium ${
+                                  course.type === 'free' ? 'text-green-600' : 'text-blue-600'
+                                }`}>
+                                  {course.type === 'free' ? 'Free' : `$${course.price}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="p-6">
+                              <div className="mb-3">
+                                <h4 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2">{course.title}</h4>
+                                <p className="text-gray-600 text-sm line-clamp-3">{course.description}</p>
+                              </div>
+
+                              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                                <div className="flex items-center space-x-4">
+                                  <div className="flex items-center space-x-1">
+                                    <BookOpen className="w-4 h-4" />
+                                    <span>{course.lessons?.length || 0} lessons</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Users className="w-4 h-4" />
+                                    <span>{course.course_analytics?.[0]?.total_students || 0} students</span>
+                                  </div>
+                                </div>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  course.level === 'Beginner' ? 'bg-green-100 text-green-700' :
+                                  course.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {course.level}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center space-x-3">
+                                <button 
+                                  className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-2 px-4 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                                  onClick={() => {
+                                    console.log('Enrolling in course:', course.id);
+                                    alert('Enrollment functionality coming soon!');
+                                  }}
+                                >
+                                  Enroll Now
+                                </button>
+                                <button 
+                                  className="border border-gray-300 text-gray-700 py-2 px-4 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                                  onClick={() => {
+                                    console.log('Viewing course details:', course.id);
+                                    alert('Course preview coming soon!');
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {communityTab === 'chat' && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 h-96 flex flex-col">
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900">Live Chat</h3>
+                        <div className="flex items-center space-x-2 text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm">12 online</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                      {getFilteredContent(selectedCommunity, 'chat').map((message: any) => (
+                        <div key={message.id} className="flex items-start space-x-3">
+                          <img
+                            src={message.avatar}
+                            alt={message.author}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="font-medium text-sm text-gray-900">{message.author}</span>
+                              <span className="text-xs text-gray-500">{message.timestamp}</span>
+                            </div>
+                            <p className="text-gray-700 text-sm">{message.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-4 border-t border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          placeholder="Type your message..."
+                          className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button 
+                          onClick={() => alert("Send message functionality")}
+                          className="bg-blue-500 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors"
+                        >
+                          <Send className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StudentCommunity;
