@@ -185,6 +185,11 @@ export const courseService = {
     if (lessonData.additionalContent) formData.append('additionalContent', lessonData.additionalContent);
     formData.append('allowPreview', lessonData.allowPreview.toString());
     
+    // Add files to remove
+    if (lessonData.filesToRemove && lessonData.filesToRemove.length > 0) {
+      formData.append('filesToRemove', JSON.stringify(lessonData.filesToRemove));
+    }
+    
     // Add new files
     if (lessonData.resourceFiles && lessonData.resourceFiles.length > 0) {
       lessonData.resourceFiles.forEach((file: File) => {

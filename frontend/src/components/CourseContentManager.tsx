@@ -29,6 +29,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
   const [lessonAdditionalContent, setLessonAdditionalContent] = useState('');
   const [lessonAllowPreview, setLessonAllowPreview] = useState(false);
   const [resourceFiles, setResourceFiles] = useState<File[]>([]);
+  const [filesToRemove, setFilesToRemove] = useState<string[]>([]);
 
   useEffect(() => {
     loadCourseContent();
@@ -70,6 +71,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     setLessonAdditionalContent('');
     setLessonAllowPreview(false);
     setResourceFiles([]);
+    setFilesToRemove([]);
     setEditingLesson(null);
     setSelectedModuleId(null);
   };
@@ -202,6 +204,20 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     }
   };
 
+  const removeExistingFile = (fileIndex: number) => {
+    if (editingLesson && editingLesson.resource_files) {
+      const fileToRemove = editingLesson.resource_files[fileIndex];
+      setFilesToRemove(prev => [...prev, fileToRemove.fileName]);
+      
+      // Remove from the display list
+      const updatedFiles = editingLesson.resource_files.filter((_, index) => index !== fileIndex);
+      setEditingLesson({
+        ...editingLesson,
+        resource_files: updatedFiles
+      });
+    }
+  };
+
   const handleEditLesson = async () => {
     if (!editingLesson || !lessonTitle.trim()) {
       alert('Lesson title is required');
@@ -215,7 +231,8 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
         videoUrl: lessonVideoUrl,
         additionalContent: lessonAdditionalContent,
         allowPreview: lessonAllowPreview,
-        resourceFiles: resourceFiles
+        resourceFiles: resourceFiles,
+        filesToRemove: filesToRemove
       });
       
       setShowLessonModal(false);
@@ -677,7 +694,7 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                   </div>
                 )}
 
-                {/* Show existing files for editing */}
+                {/* Show existing files for editing - UPDATED VERSION */}
                 {editingLesson && editingLesson.resource_files && editingLesson.resource_files.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <p className="text-sm font-medium text-gray-700">Current Files:</p>
@@ -686,15 +703,28 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                         <div className="flex items-center space-x-2">
                           <span className="text-lg">{getFileIcon(file.originalName)}</span>
                           <span className="text-sm text-gray-700">{file.originalName}</span>
+                          <span className="text-xs text-gray-500">
+                            {file.size && `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                          </span>
                         </div>
-                        <a
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
+                        <div className="flex items-center space-x-2">
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 p-1"
+                            title="View file"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                          <button
+                            onClick={() => removeExistingFile(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Remove file"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

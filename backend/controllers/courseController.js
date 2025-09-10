@@ -453,68 +453,92 @@ export const createLesson = [
   }
 ];
 
-// Update lesson (with file upload middleware)
-export const updateLesson = [
-  upload.array('resourceFiles', 10), // Allow up to 10 files
-  async (req, res) => {
-    try {
-      const supabase = getSupabaseClient();
-      const { lessonId } = req.params;
-      const { title, description, videoUrl, additionalContent, allowPreview } = req.body;
+  // Update lesson (with file upload middleware)
+  export const updateLesson = [
+    upload.array('resourceFiles', 10), // Allow up to 10 files
+    async (req, res) => {
+      try {
+        const supabase = getSupabaseClient();
+        const { lessonId } = req.params;
+        const { title, description, videoUrl, additionalContent, allowPreview, filesToRemove } = req.body;
 
-      const updateData = {
-        updated_at: new Date().toISOString()
-      };
+        const updateData = {
+          updated_at: new Date().toISOString()
+        };
 
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
-      if (videoUrl !== undefined) updateData.video_url = videoUrl;
-      if (additionalContent !== undefined) updateData.additional_content = additionalContent;
-      if (allowPreview !== undefined) updateData.allow_preview = allowPreview === 'true';
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (videoUrl !== undefined) updateData.video_url = videoUrl;
+        if (additionalContent !== undefined) updateData.additional_content = additionalContent;
+        if (allowPreview !== undefined) updateData.allow_preview = allowPreview === 'true';
 
-      // Upload new files if any
-      if (req.files && req.files.length > 0) {
-        try {
-          const uploadPromises = req.files.map(file => uploadFileToStorage(file));
-          const newFiles = await Promise.all(uploadPromises);
-          
-          // Get existing files
-          const { data: existingLesson } = await supabase
-            .from('lessons')
-            .select('resource_files')
-            .eq('id', lessonId)
-            .single();
-          
-          const existingFiles = existingLesson?.resource_files || [];
-          updateData.resource_files = [...existingFiles, ...newFiles];
-        } catch (uploadError) {
-          return res.status(400).json({ error: `File upload failed: ${uploadError.message}` });
+        // Get existing lesson data
+        const { data: existingLesson } = await supabase
+          .from('lessons')
+          .select('resource_files')
+          .eq('id', lessonId)
+          .single();
+
+        let currentFiles = existingLesson?.resource_files || [];
+
+        // Remove files if specified
+        if (filesToRemove) {
+          try {
+            const filesToRemoveArray = JSON.parse(filesToRemove);
+            
+            if (filesToRemoveArray.length > 0) {
+              // Remove files from storage
+              const supabaseStorage = getSupabaseClient();
+              await supabaseStorage.storage
+                .from('course-files')
+                .remove(filesToRemoveArray);
+
+              // Remove files from the current files array
+              currentFiles = currentFiles.filter(file => 
+                !filesToRemoveArray.includes(file.fileName)
+              );
+            }
+          } catch (parseError) {
+            console.error('Error parsing filesToRemove:', parseError);
+          }
         }
+
+        // Upload new files if any
+        if (req.files && req.files.length > 0) {
+          try {
+            const uploadPromises = req.files.map(file => uploadFileToStorage(file));
+            const newFiles = await Promise.all(uploadPromises);
+            currentFiles = [...currentFiles, ...newFiles];
+          } catch (uploadError) {
+            return res.status(400).json({ error: `File upload failed: ${uploadError.message}` });
+          }
+        }
+
+        updateData.resource_files = currentFiles;
+
+        const { data: lesson, error } = await supabase
+          .from('lessons')
+          .update(updateData)
+          .eq('id', lessonId)
+          .select(`
+            *,
+            modules!inner(
+              courses!inner(instructor_id)
+            )
+          `)
+          .single();
+
+        if (error || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
+          return res.status(400).json({ error: 'Lesson not found or unauthorized' });
+        }
+
+        res.json(lesson);
+      } catch (error) {
+        console.error('Update lesson error:', error);
+        res.status(500).json({ error: 'Internal server error' });
       }
-
-      const { data: lesson, error } = await supabase
-        .from('lessons')
-        .update(updateData)
-        .eq('id', lessonId)
-        .select(`
-          *,
-          modules!inner(
-            courses!inner(instructor_id)
-          )
-        `)
-        .single();
-
-      if (error || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
-        return res.status(400).json({ error: 'Lesson not found or unauthorized' });
-      }
-
-      res.json(lesson);
-    } catch (error) {
-      console.error('Update lesson error:', error);
-      res.status(500).json({ error: 'Internal server error' });
     }
-  }
-];
+  ];
 
 // Delete lesson
 export const deleteLesson = async (req, res) => {
