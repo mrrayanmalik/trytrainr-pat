@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Play, Clock, FileText, Video, ExternalLink, Eye, BookOpen, Users } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Play, FileText, Video, ExternalLink, Eye, BookOpen, Users, Upload, X } from 'lucide-react';
 import { courseService, Course, Module, Lesson } from '../services/courseService';
 import CourseLearningView from './CourseLearningView';
 
@@ -26,10 +26,9 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDescription, setLessonDescription] = useState('');
   const [lessonVideoUrl, setLessonVideoUrl] = useState('');
-  const [lessonDuration, setLessonDuration] = useState('');
-  const [lessonResourceUrl, setLessonResourceUrl] = useState('');
   const [lessonAdditionalContent, setLessonAdditionalContent] = useState('');
   const [lessonAllowPreview, setLessonAllowPreview] = useState(false);
+  const [resourceFiles, setResourceFiles] = useState<File[]>([]);
 
   useEffect(() => {
     loadCourseContent();
@@ -68,10 +67,9 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     setLessonTitle('');
     setLessonDescription('');
     setLessonVideoUrl('');
-    setLessonDuration('');
-    setLessonResourceUrl('');
     setLessonAdditionalContent('');
     setLessonAllowPreview(false);
+    setResourceFiles([]);
     setEditingLesson(null);
     setSelectedModuleId(null);
   };
@@ -100,11 +98,29 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     setLessonTitle(lesson.title);
     setLessonDescription(lesson.description || '');
     setLessonVideoUrl(lesson.video_url || '');
-    setLessonDuration(lesson.duration ? formatDurationForInput(lesson.duration) : '');
-    setLessonResourceUrl(lesson.resource_url || '');
     setLessonAdditionalContent(lesson.additional_content || '');
     setLessonAllowPreview(lesson.allow_preview);
+    setResourceFiles([]); // For editing, we'll show existing files separately
     setShowLessonModal(true);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    // Validate file sizes (10MB max each)
+    const validFiles = files.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+        return false;
+      }
+      return true;
+    });
+    
+    setResourceFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setResourceFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateModule = async () => {
@@ -167,26 +183,14 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
       return;
     }
 
-    // Convert duration to seconds
-    let durationInSeconds = 0;
-    if (lessonDuration) {
-      const parts = lessonDuration.split(':');
-      if (parts.length === 2) {
-        durationInSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      } else {
-        durationInSeconds = parseInt(lessonDuration) || 0;
-      }
-    }
-
     try {
       await courseService.createLesson(selectedModuleId, {
         title: lessonTitle,
         description: lessonDescription,
         videoUrl: lessonVideoUrl,
-        duration: durationInSeconds,
-        resourceUrl: lessonResourceUrl,
         additionalContent: lessonAdditionalContent,
-        allowPreview: lessonAllowPreview
+        allowPreview: lessonAllowPreview,
+        resourceFiles: resourceFiles
       });
       
       setShowLessonModal(false);
@@ -204,26 +208,14 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
       return;
     }
 
-    // Convert duration to seconds
-    let durationInSeconds = 0;
-    if (lessonDuration) {
-      const parts = lessonDuration.split(':');
-      if (parts.length === 2) {
-        durationInSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      } else {
-        durationInSeconds = parseInt(lessonDuration) || 0;
-      }
-    }
-
     try {
       await courseService.updateLesson(editingLesson.id, {
         title: lessonTitle,
         description: lessonDescription,
         videoUrl: lessonVideoUrl,
-        duration: durationInSeconds,
-        resourceUrl: lessonResourceUrl,
         additionalContent: lessonAdditionalContent,
-        allowPreview: lessonAllowPreview
+        allowPreview: lessonAllowPreview,
+        resourceFiles: resourceFiles
       });
       
       setShowLessonModal(false);
@@ -249,25 +241,36 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const formatDurationForInput = (seconds: number) => {
-    if (seconds === 0) return '';
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
   const getTotalLessons = () => {
     return course?.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
   };
 
   const hasContent = () => {
     return course?.modules && course.modules.length > 0 && getTotalLessons() > 0;
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return '📄';
+      case 'doc':
+      case 'docx':
+        return '📃';
+      case 'ppt':
+      case 'pptx':
+        return '📊';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return '🖼️';
+      case 'zip':
+      case 'rar':
+        return '🗜️';
+      default:
+        return '📁';
+    }
   };
 
   if (loading) {
@@ -457,15 +460,11 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                               )}
                               
                               <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="w-4 h-4" />
-                                  <span>{formatDuration(lesson.duration)}</span>
-                                </div>
                                 {lesson.video_url && (
                                   <span className="text-purple-600">Video Available</span>
                                 )}
-                                {lesson.resource_url && (
-                                  <span className="text-blue-600">Resources Available</span>
+                                {lesson.resource_files && lesson.resource_files.length > 0 && (
+                                  <span className="text-blue-600">{lesson.resource_files.length} Resource{lesson.resource_files.length > 1 ? 's' : ''}</span>
                                 )}
                               </div>
                             </div>
@@ -615,48 +614,91 @@ const CourseContentManager: React.FC<CourseContentManagerProps> = ({ courseId, o
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Video URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={lessonVideoUrl}
-                    onChange={(e) => setLessonVideoUrl(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">YouTube, Vimeo, etc.</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Duration
-                  </label>
-                  <input
-                    type="text"
-                    value={lessonDuration}
-                    onChange={(e) => setLessonDuration(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="5:30 or 330 (seconds)"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">Format: MM:SS or seconds</p>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Resource URL (Optional)
+                  Video URL (Optional)
                 </label>
                 <input
                   type="url"
-                  value={lessonResourceUrl}
-                  onChange={(e) => setLessonResourceUrl(e.target.value)}
+                  value={lessonVideoUrl}
+                  onChange={(e) => setLessonVideoUrl(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="https://example.com/lesson-resources.pdf"
+                  placeholder="https://youtube.com/watch?v=..."
                 />
-                <p className="text-sm text-gray-500 mt-1">Links to PDFs, code files, etc.</p>
+                <p className="text-sm text-gray-500 mt-1">YouTube, Vimeo, etc.</p>
+              </div>
+
+              {/* Resource Files Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Resource Files (Optional)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600 mb-2">Upload resource files for this lesson</p>
+                  <p className="text-sm text-gray-500 mb-4">PDF, DOC, PPT, images, etc. (Max 10MB each)</p>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="resource-upload"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                  />
+                  <label
+                    htmlFor="resource-upload"
+                    className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors cursor-pointer"
+                  >
+                    Choose Files
+                  </label>
+                </div>
+
+                {/* Display selected files */}
+                {resourceFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Selected Files:</p>
+                    {resourceFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">{getFileIcon(file.name)}</span>
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show existing files for editing */}
+                {editingLesson && editingLesson.resource_files && editingLesson.resource_files.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Current Files:</p>
+                    {editingLesson.resource_files.map((file: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">{getFileIcon(file.originalName)}</span>
+                          <span className="text-sm text-gray-700">{file.originalName}</span>
+                        </div>
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>

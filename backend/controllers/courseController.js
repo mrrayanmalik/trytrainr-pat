@@ -1,10 +1,64 @@
 import { createClient } from '@supabase/supabase-js';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
 
 const getSupabaseClient = () => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  // Use SERVICE_ROLE_KEY instead of ANON_KEY for backend operations
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   return createClient(supabaseUrl, supabaseKey);
+};
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = /\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|zip|rar)$/i;
+    const extname = allowedTypes.test(path.extname(file.originalname));
+    const mimetype = /^(application|image|text)\//i.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
+
+// Upload file to Supabase Storage
+const uploadFileToStorage = async (file, folder = 'lesson-resources') => {
+  const supabase = getSupabaseClient();
+  const fileExtension = path.extname(file.originalname);
+  const fileName = `${folder}/${uuidv4()}${fileExtension}`;
+  
+  const { data, error } = await supabase.storage
+    .from('course-files')
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+
+  if (error) {
+    throw new Error(`File upload failed: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('course-files')
+    .getPublicUrl(fileName);
+
+  return {
+    url: urlData.publicUrl,
+    fileName: fileName,
+    originalName: file.originalname,
+    size: file.size,
+    mimeType: file.mimetype
+  };
 };
 
 // Get instructor's courses
@@ -73,14 +127,13 @@ export const createCourse = async (req, res) => {
   }
 };
 
-// Update course - FIXED
+// Update course
 export const updateCourse = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const { courseId } = req.params;
     const { title, description, category, level, type, price, thumbnailUrl, publishImmediately } = req.body;
 
-    // Prepare update data with proper field mapping
     const updateData = {
       updated_at: new Date().toISOString()
     };
@@ -147,7 +200,6 @@ export const toggleCoursePublication = async (req, res) => {
     const supabase = getSupabaseClient();
     const { courseId } = req.params;
 
-    // First get current publication status
     const { data: currentCourse, error: fetchError } = await supabase
       .from('courses')
       .select('is_published')
@@ -159,7 +211,6 @@ export const toggleCoursePublication = async (req, res) => {
       return res.status(400).json({ error: fetchError.message });
     }
 
-    // Toggle the publication status
     const { data: course, error } = await supabase
       .from('courses')
       .update({
@@ -223,7 +274,6 @@ export const createModule = async (req, res) => {
       return res.status(400).json({ error: 'Module title is required' });
     }
 
-    // Verify course belongs to instructor
     const { data: course, error: courseError } = await supabase
       .from('courses')
       .select('id')
@@ -235,7 +285,6 @@ export const createModule = async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Get the next order index
     const { count } = await supabase
       .from('modules')
       .select('*', { count: 'exact', head: true })
@@ -304,7 +353,6 @@ export const deleteModule = async (req, res) => {
     const supabase = getSupabaseClient();
     const { moduleId } = req.params;
 
-    // Verify module belongs to instructor's course
     const { data: module, error: fetchError } = await supabase
       .from('modules')
       .select(`
@@ -334,105 +382,139 @@ export const deleteModule = async (req, res) => {
   }
 };
 
-// Create lesson
-export const createLesson = async (req, res) => {
-  try {
-    const supabase = getSupabaseClient();
-    const { moduleId } = req.params;
-    const { title, description, videoUrl, duration, resourceUrl, additionalContent, allowPreview } = req.body;
+// Create lesson (with file upload middleware)
+export const createLesson = [
+  upload.array('resourceFiles', 10), // Allow up to 10 files
+  async (req, res) => {
+    try {
+      const supabase = getSupabaseClient();
+      const { moduleId } = req.params;
+      const { title, description, videoUrl, additionalContent, allowPreview } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ error: 'Lesson title is required' });
-    }
+      if (!title) {
+        return res.status(400).json({ error: 'Lesson title is required' });
+      }
 
-    // Verify module belongs to instructor's course
-    const { data: module, error: moduleError } = await supabase
-      .from('modules')
-      .select(`
-        id,
-        courses!inner(instructor_id)
-      `)
-      .eq('id', moduleId)
-      .single();
-
-    if (moduleError || !module || module.courses.instructor_id !== req.user.instructors[0].id) {
-      return res.status(404).json({ error: 'Module not found or unauthorized' });
-    }
-
-    // Get the next order index
-    const { count } = await supabase
-      .from('lessons')
-      .select('*', { count: 'exact', head: true })
-      .eq('module_id', moduleId);
-
-    const { data: lesson, error } = await supabase
-      .from('lessons')
-      .insert({
-        module_id: moduleId,
-        title,
-        description,
-        video_url: videoUrl,
-        duration: duration || 0,
-        resource_url: resourceUrl,
-        additional_content: additionalContent,
-        allow_preview: allowPreview || false,
-        order_index: count || 0
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.status(201).json(lesson);
-  } catch (error) {
-    console.error('Create lesson error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Update lesson
-export const updateLesson = async (req, res) => {
-  try {
-    const supabase = getSupabaseClient();
-    const { lessonId } = req.params;
-    const { title, description, videoUrl, duration, resourceUrl, additionalContent, allowPreview } = req.body;
-
-    const updateData = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (videoUrl !== undefined) updateData.video_url = videoUrl;
-    if (duration !== undefined) updateData.duration = duration;
-    if (resourceUrl !== undefined) updateData.resource_url = resourceUrl;
-    if (additionalContent !== undefined) updateData.additional_content = additionalContent;
-    if (allowPreview !== undefined) updateData.allow_preview = allowPreview;
-
-    const { data: lesson, error } = await supabase
-      .from('lessons')
-      .update(updateData)
-      .eq('id', lessonId)
-      .select(`
-        *,
-        modules!inner(
+      // Verify module belongs to instructor's course
+      const { data: module, error: moduleError } = await supabase
+        .from('modules')
+        .select(`
+          id,
           courses!inner(instructor_id)
-        )
-      `)
-      .single();
+        `)
+        .eq('id', moduleId)
+        .single();
 
-    if (error || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
-      return res.status(400).json({ error: 'Lesson not found or unauthorized' });
+      if (moduleError || !module || module.courses.instructor_id !== req.user.instructors[0].id) {
+        return res.status(404).json({ error: 'Module not found or unauthorized' });
+      }
+
+      // Upload files if any
+      let resourceFiles = [];
+      if (req.files && req.files.length > 0) {
+        try {
+          const uploadPromises = req.files.map(file => uploadFileToStorage(file));
+          resourceFiles = await Promise.all(uploadPromises);
+        } catch (uploadError) {
+          return res.status(400).json({ error: `File upload failed: ${uploadError.message}` });
+        }
+      }
+
+      // Get the next order index
+      const { count } = await supabase
+        .from('lessons')
+        .select('*', { count: 'exact', head: true })
+        .eq('module_id', moduleId);
+
+      const { data: lesson, error } = await supabase
+        .from('lessons')
+        .insert({
+          module_id: moduleId,
+          title,
+          description,
+          video_url: videoUrl,
+          resource_files: resourceFiles,
+          additional_content: additionalContent,
+          allow_preview: allowPreview === 'true',
+          order_index: count || 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      res.status(201).json(lesson);
+    } catch (error) {
+      console.error('Create lesson error:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
-
-    res.json(lesson);
-  } catch (error) {
-    console.error('Update lesson error:', error);
-    res.status(500).json({ error: 'Internal server error' });
   }
-};
+];
+
+// Update lesson (with file upload middleware)
+export const updateLesson = [
+  upload.array('resourceFiles', 10), // Allow up to 10 files
+  async (req, res) => {
+    try {
+      const supabase = getSupabaseClient();
+      const { lessonId } = req.params;
+      const { title, description, videoUrl, additionalContent, allowPreview } = req.body;
+
+      const updateData = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (videoUrl !== undefined) updateData.video_url = videoUrl;
+      if (additionalContent !== undefined) updateData.additional_content = additionalContent;
+      if (allowPreview !== undefined) updateData.allow_preview = allowPreview === 'true';
+
+      // Upload new files if any
+      if (req.files && req.files.length > 0) {
+        try {
+          const uploadPromises = req.files.map(file => uploadFileToStorage(file));
+          const newFiles = await Promise.all(uploadPromises);
+          
+          // Get existing files
+          const { data: existingLesson } = await supabase
+            .from('lessons')
+            .select('resource_files')
+            .eq('id', lessonId)
+            .single();
+          
+          const existingFiles = existingLesson?.resource_files || [];
+          updateData.resource_files = [...existingFiles, ...newFiles];
+        } catch (uploadError) {
+          return res.status(400).json({ error: `File upload failed: ${uploadError.message}` });
+        }
+      }
+
+      const { data: lesson, error } = await supabase
+        .from('lessons')
+        .update(updateData)
+        .eq('id', lessonId)
+        .select(`
+          *,
+          modules!inner(
+            courses!inner(instructor_id)
+          )
+        `)
+        .single();
+
+      if (error || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
+        return res.status(400).json({ error: 'Lesson not found or unauthorized' });
+      }
+
+      res.json(lesson);
+    } catch (error) {
+      console.error('Update lesson error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+];
 
 // Delete lesson
 export const deleteLesson = async (req, res) => {
@@ -445,6 +527,7 @@ export const deleteLesson = async (req, res) => {
       .from('lessons')
       .select(`
         id,
+        resource_files,
         modules!inner(
           courses!inner(instructor_id)
         )
@@ -454,6 +537,16 @@ export const deleteLesson = async (req, res) => {
 
     if (fetchError || !lesson || lesson.modules.courses.instructor_id !== req.user.instructors[0].id) {
       return res.status(404).json({ error: 'Lesson not found or unauthorized' });
+    }
+
+    // Delete files from storage if any
+    if (lesson.resource_files && lesson.resource_files.length > 0) {
+      const supabaseStorage = getSupabaseClient();
+      const filesToDelete = lesson.resource_files.map(file => file.fileName);
+      
+      await supabaseStorage.storage
+        .from('course-files')
+        .remove(filesToDelete);
     }
 
     const { error } = await supabase

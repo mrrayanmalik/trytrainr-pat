@@ -3,7 +3,13 @@ const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000'
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+};
+
+const getFormDataHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
     'Authorization': `Bearer ${token}`,
   };
 };
@@ -37,8 +43,7 @@ export interface Lesson {
   title: string;
   description?: string;
   video_url?: string;
-  duration: number;
-  resource_url?: string;
+  resource_files?: any[];
   additional_content?: string;
   allow_preview: boolean;
   order_index: number;
@@ -57,7 +62,10 @@ export const courseService = {
   async createCourse(courseData: any): Promise<Course> {
     const response = await fetch(`${API_URL}/api/courses`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(courseData),
     });
     if (!response.ok) {
@@ -70,7 +78,10 @@ export const courseService = {
   async updateCourse(courseId: string, courseData: any): Promise<Course> {
     const response = await fetch(`${API_URL}/api/courses/${courseId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(courseData),
     });
     if (!response.ok) throw new Error('Failed to update course');
@@ -106,7 +117,10 @@ export const courseService = {
   async createModule(courseId: string, moduleData: any): Promise<Module> {
     const response = await fetch(`${API_URL}/api/courses/${courseId}/modules`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(moduleData),
     });
     if (!response.ok) throw new Error('Failed to create module');
@@ -116,7 +130,10 @@ export const courseService = {
   async updateModule(moduleId: string, moduleData: any): Promise<Module> {
     const response = await fetch(`${API_URL}/api/modules/${moduleId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(moduleData),
     });
     if (!response.ok) throw new Error('Failed to update module');
@@ -133,20 +150,52 @@ export const courseService = {
 
   // Lesson API calls
   async createLesson(moduleId: string, lessonData: any): Promise<Lesson> {
+    const formData = new FormData();
+    
+    // Add text fields
+    formData.append('title', lessonData.title);
+    if (lessonData.description) formData.append('description', lessonData.description);
+    if (lessonData.videoUrl) formData.append('videoUrl', lessonData.videoUrl);
+    if (lessonData.additionalContent) formData.append('additionalContent', lessonData.additionalContent);
+    formData.append('allowPreview', lessonData.allowPreview.toString());
+    
+    // Add files
+    if (lessonData.resourceFiles && lessonData.resourceFiles.length > 0) {
+      lessonData.resourceFiles.forEach((file: File) => {
+        formData.append('resourceFiles', file);
+      });
+    }
+
     const response = await fetch(`${API_URL}/api/modules/${moduleId}/lessons`, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(lessonData),
+      headers: getFormDataHeaders(),
+      body: formData,
     });
     if (!response.ok) throw new Error('Failed to create lesson');
     return response.json();
   },
 
   async updateLesson(lessonId: string, lessonData: any): Promise<Lesson> {
+    const formData = new FormData();
+    
+    // Add text fields
+    formData.append('title', lessonData.title);
+    if (lessonData.description) formData.append('description', lessonData.description);
+    if (lessonData.videoUrl) formData.append('videoUrl', lessonData.videoUrl);
+    if (lessonData.additionalContent) formData.append('additionalContent', lessonData.additionalContent);
+    formData.append('allowPreview', lessonData.allowPreview.toString());
+    
+    // Add new files
+    if (lessonData.resourceFiles && lessonData.resourceFiles.length > 0) {
+      lessonData.resourceFiles.forEach((file: File) => {
+        formData.append('resourceFiles', file);
+      });
+    }
+
     const response = await fetch(`${API_URL}/api/lessons/${lessonId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(lessonData),
+      headers: getFormDataHeaders(),
+      body: formData,
     });
     if (!response.ok) throw new Error('Failed to update lesson');
     return response.json();

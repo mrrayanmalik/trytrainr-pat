@@ -3,7 +3,6 @@ import {
   ArrowLeft, 
   Play, 
   CheckCircle, 
-  Clock, 
   BookOpen, 
   Users, 
   Star,
@@ -137,12 +136,6 @@ const StudentLearningView: React.FC<StudentLearningViewProps> = ({ courseId, onB
     }
   };
 
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
   const getYouTubeVideoId = (url: string): string | null => {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
@@ -177,6 +170,30 @@ const StudentLearningView: React.FC<StudentLearningViewProps> = ({ courseId, onB
       return 'Vimeo';
     }
     return 'Video';
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return '📄';
+      case 'doc':
+      case 'docx':
+        return '📃';
+      case 'ppt':
+      case 'pptx':
+        return '📊';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return '🖼️';
+      case 'zip':
+      case 'rar':
+        return '🗜️';
+      default:
+        return '📁';
+    }
   };
 
   if (loading) {
@@ -302,14 +319,18 @@ const StudentLearningView: React.FC<StudentLearningViewProps> = ({ courseId, onB
                                 {lesson.title}
                               </h4>
                               <div className="flex items-center space-x-2 mt-1">
-                                <Clock className="w-3 h-3 text-gray-500" />
-                                <span className="text-xs text-gray-600">
-                                  {formatDuration(lesson.duration)}
-                                </span>
                                 {lesson.video_url && (
                                   <span className="text-xs text-blue-600">
                                     {getVideoSource(lesson.video_url)}
                                   </span>
+                                )}
+                                {lesson.resource_files && lesson.resource_files.length > 0 && (
+                                  <>
+                                    {lesson.video_url && <span className="text-xs text-gray-400">•</span>}
+                                    <span className="text-xs text-green-600">
+                                      {lesson.resource_files.length} Resource{lesson.resource_files.length > 1 ? 's' : ''}
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -341,16 +362,12 @@ const StudentLearningView: React.FC<StudentLearningViewProps> = ({ courseId, onB
                 
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{currentLesson.title}</h1>
                 <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  <span>{formatDuration(currentLesson.duration)}</span>
                   {currentLesson.video_url && (
-                    <>
-                      <span>•</span>
-                      <span>{getVideoSource(currentLesson.video_url)}</span>
-                    </>
+                    <span>{getVideoSource(currentLesson.video_url)}</span>
                   )}
                   {course.lessonProgress?.[currentLesson.id]?.completed && (
                     <>
-                      <span>•</span>
+                      {currentLesson.video_url && <span>•</span>}
                       <span className="text-green-600 font-medium flex items-center">
                         <CheckCircle className="w-4 h-4 mr-1" />
                         Completed
@@ -395,31 +412,47 @@ const StudentLearningView: React.FC<StudentLearningViewProps> = ({ courseId, onB
                   </div>
                 )}
 
-                {/* Resources */}
-                {currentLesson.resource_url && (
+                {/* Resource Files */}
+                {currentLesson.resource_files && currentLesson.resource_files.length > 0 && (
                   <div className="border-t border-gray-200 pt-6">
-                    <h3 className="font-semibold text-gray-900 mb-4">Resources</h3>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">Lesson Resources</h4>
-                            <p className="text-sm text-gray-600">Additional materials for this lesson</p>
+                    <h3 className="font-semibold text-gray-900 mb-4">Resource Files</h3>
+                    <div className="grid gap-3">
+                      {currentLesson.resource_files.map((file: any, index: number) => (
+                        <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="text-2xl">
+                                {getFileIcon(file.originalName)}
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-900">{file.originalName}</h4>
+                                <p className="text-sm text-gray-600">
+                                  {file.size && `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Open</span>
+                              </a>
+                              <a
+                                href={file.url}
+                                download={file.originalName}
+                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2"
+                              >
+                                <Download className="w-4 h-4" />
+                                <span>Download</span>
+                              </a>
+                            </div>
                           </div>
                         </div>
-                        <a
-                          href={currentLesson.resource_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span>Open Resource</span>
-                        </a>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 )}

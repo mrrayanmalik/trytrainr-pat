@@ -54,7 +54,7 @@ router.post('/courses/:courseId/modules', authenticateToken, requireRole(['instr
 router.put('/modules/:moduleId', authenticateToken, requireRole(['instructor']), updateModule);
 router.delete('/modules/:moduleId', authenticateToken, requireRole(['instructor']), deleteModule);
 
-// Lesson routes (instructor only)
+// Lesson routes (instructor only) - Note: these now handle file uploads
 router.post('/modules/:moduleId/lessons', authenticateToken, requireRole(['instructor']), createLesson);
 router.put('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), updateLesson);
 router.delete('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), deleteLesson);
