@@ -7,31 +7,53 @@ import {
   Video, 
   Target, 
   Settings, 
-  User, 
-  ArrowLeft, 
-  LogOut 
+  HelpCircle,
+  LogOut,
+  Home,
+  Trophy
 } from 'lucide-react';
 
-interface StudentSidebarProps {
-  progress: {
-    coursesEnrolled: number;
-    coursesCompleted: number;
-    totalHours: number;
-    currentStreak: number;
-  };
-}
-
-const StudentSidebar: React.FC<StudentSidebarProps> = ({ progress }) => {
+const StudentSidebar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const menuItems = [
-    { id: "courses", label: "My Courses", icon: BookOpen, path: "/student/courses" },
-    { id: "community", label: "Community", icon: MessageCircle, path: "/student/community" },
-    { id: "live-calls", label: "Live Calls", icon: Video, path: "/student/live-calls" },
-    { id: "progress", label: "Progress", icon: Target, path: "/student/progress" },
-    { id: "settings", label: "Settings", icon: Settings, path: "/student/settings" },
+    {
+      key: 'courses',
+      label: 'My Courses',
+      icon: BookOpen,
+      path: '/student/courses',
+      hasSubmenu: false
+    },
+    {
+      key: 'community',
+      label: 'Community',
+      icon: MessageCircle,
+      path: '/student/community',
+      hasSubmenu: false
+    },
+    {
+      key: 'live-calls',
+      label: 'Live Sessions',
+      icon: Video,
+      path: '/student/live-calls',
+      hasSubmenu: false
+    },
+    {
+      key: 'progress',
+      label: 'Progress',
+      icon: Target,
+      path: '/student/progress',
+      hasSubmenu: false
+    },
+    {
+      key: 'achievements',
+      label: 'Achievements',
+      icon: Trophy,
+      path: '/student/achievements',
+      hasSubmenu: false
+    }
   ];
 
   const isActive = (path: string) => {
@@ -43,82 +65,78 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ progress }) => {
   };
 
   return (
-    <div className="w-80 flex flex-col p-8 text-white bg-gradient-to-br from-blue-500 via-teal-500 to-green-500">
-      <div className="mb-12">
-        <div className="flex items-center space-x-3 mb-8">
-          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-            <User className="w-7 h-7 text-white" />
+    <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-20 flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">T</span>
           </div>
-          <span className="text-3xl font-bold">Trainr</span>
+          <span className="text-xl font-bold text-gray-900">trainr</span>
         </div>
-
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">
-            Welcome back, {user?.firstName}! 👋
-          </h1>
-          <p className="text-blue-100">Student Learning Portal</p>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold">
-              {progress.coursesEnrolled}
-            </div>
-            <div className="text-blue-100 text-sm">Enrolled</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold">
-              {progress.coursesCompleted}
-            </div>
-            <div className="text-blue-100 text-sm">Completed</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold">{progress.totalHours}</div>
-            <div className="text-blue-100 text-sm">Hours</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold">
-              {progress.currentStreak}
-            </div>
-            <div className="text-blue-100 text-sm">Day Streak</div>
-          </div>
+        <div>
+          <p className="text-sm text-gray-600">Welcome back,</p>
+          <p className="font-semibold text-gray-900">{user?.firstName}!</p>
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 space-y-2">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleNavigation(item.path)}
-            className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-              isActive(item.path)
-                ? "bg-white/20 backdrop-blur-sm text-white border border-white/30"
-                : "text-blue-100 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            <item.icon className="w-5 h-5 mr-3" />
-            {item.label}
-          </button>
-        ))}
+      {/* Menu Items */}
+      <nav className="flex-1 overflow-y-auto py-4">
+        <div className="space-y-1 px-3">
+          {menuItems.map((item) => (
+            <div key={item.key}>
+              <button
+                onClick={() => handleNavigation(item.path)}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive(item.path)
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <item.icon size={20} className="flex-shrink-0" />
+                <span className="ml-3 flex-1 text-left">{item.label}</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </nav>
-
-      {/* Bottom Actions */}
-      <div className="space-y-3 mt-8">
+      
+      {/* Bottom Menu Items */}
+      <div className="space-y-1 px-3 py-4 border-t border-gray-200">
         <button
-          onClick={() => navigate("/")}
-          className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl text-blue-100 hover:text-white hover:bg-white/10 transition-all duration-200"
+          onClick={() => navigate('/')}
+          className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 mr-3" />
-          Back to Home
+          <Home size={20} className="flex-shrink-0" />
+          <span className="ml-3 flex-1 text-left">Home</span>
         </button>
+
+        <button
+          onClick={() => navigate('/student/settings')}
+          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+            isActive('/student/settings')
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+          }`}
+        >
+          <Settings size={20} className="flex-shrink-0" />
+          <span className="ml-3 flex-1 text-left">Settings</span>
+        </button>
+        
+        <button
+          onClick={() => alert('Support page coming soon!')}
+          className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+        >
+          <HelpCircle size={20} className="flex-shrink-0" />
+          <span className="ml-3 flex-1 text-left">Support</span>
+        </button>
+
         <button
           onClick={logout}
-          className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl text-blue-100 hover:text-white hover:bg-white/10 transition-all duration-200"
+          className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
         >
-          <LogOut className="w-5 h-5 mr-3" />
-          Logout
+          <LogOut size={20} className="flex-shrink-0" />
+          <span className="ml-3 flex-1 text-left">Logout</span>
         </button>
       </div>
     </div>

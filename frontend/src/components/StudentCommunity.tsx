@@ -14,11 +14,13 @@ import {
   Loader2,
   ArrowLeft,
   CheckCircle,
-  Clock
+  Clock,
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { studentCourseService, StudentCourse, Community } from '../services/studentCourseService';
 
-// Mock data for discussions/announcements (these would be real API calls in production)
+// Mock data for discussions/announcements
 const MOCK_DATA = {
   communityPosts: [
     {
@@ -106,10 +108,7 @@ const StudentCommunity: React.FC = () => {
     try {
       setEnrollingCourseId(courseId);
       await studentCourseService.enrollInCourse(courseId);
-      
-      // Refresh available courses to update enrollment status
       await loadAvailableCourses();
-      
       alert('Successfully enrolled in course! Check your "My Courses" section.');
     } catch (error: any) {
       console.error('Error enrolling in course:', error);
@@ -121,16 +120,17 @@ const StudentCommunity: React.FC = () => {
 
   const handleJoinCommunity = () => {
     setSelectedCommunity(community?.id || 'default');
-    // Load available courses when entering community
     loadAvailableCourses();
   };
 
   if (isLoadingCommunity) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading community...</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading community...</p>
+          </div>
         </div>
       </div>
     );
@@ -138,72 +138,81 @@ const StudentCommunity: React.FC = () => {
 
   if (!community) {
     return (
-      <div className="text-center py-12">
-        <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">No community found</h3>
-        <p className="text-gray-600">You haven't been assigned to any instructor community yet.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No community found</h3>
+          <p className="text-gray-600">You haven't been assigned to any instructor community yet.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {!selectedCommunity ? (
         <div>
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Course Communities</h2>
-            <p className="text-gray-600 mt-2">Join discussions for your enrolled courses</p>
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Community</h1>
+              <p className="text-gray-600 mt-2">Connect with your instructor and fellow students</p>
+            </div>
+            <div className="flex items-center space-x-4 mt-4 lg:mt-0">
+              <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Community Stats */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-blue-600 font-medium">Active Communities</p>
-                  <p className="text-3xl font-bold text-blue-900">1</p>
+                  <p className="text-sm text-gray-600">Active Communities</p>
+                  <p className="text-2xl font-bold text-gray-900">1</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border border-green-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-green-600 font-medium">Available Courses</p>
-                  <p className="text-3xl font-bold text-green-900">{community.stats.totalCourses}</p>
+                  <p className="text-sm text-gray-600">Available Courses</p>
+                  <p className="text-2xl font-bold text-gray-900">{community.stats.totalCourses}</p>
                 </div>
-                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-sm border border-purple-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-purple-600 font-medium">Community Members</p>
-                  <p className="text-3xl font-bold text-purple-900">{community.stats.totalStudents}</p>
+                  <p className="text-sm text-gray-600">Community Members</p>
+                  <p className="text-2xl font-bold text-gray-900">{community.stats.totalStudents}</p>
                 </div>
-                <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-                  <Star className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Star className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Community Card */}
-          <div className="grid md:grid-cols-1 max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <div
               onClick={handleJoinCommunity}
-              className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
             >
-              <div className="relative">
-                <div className="bg-gradient-to-r from-blue-500 to-green-500 h-32"></div>
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300"></div>
-                <div className="absolute bottom-4 left-4 right-4">
+              <div className="bg-gradient-to-r from-blue-500 to-green-500 h-32 flex items-center justify-center">
+                <div className="text-center">
                   <h3 className="text-white font-bold text-xl mb-1">{community.name}</h3>
                   <p className="text-white/80 text-sm">
                     by {community.instructor.firstName} {community.instructor.lastName}
@@ -235,7 +244,7 @@ const StudentCommunity: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="w-full mt-4 bg-gradient-to-r from-blue-500 to-green-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 group-hover:from-blue-600 group-hover:to-green-600">
+                <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
                   Join Discussion
                 </button>
               </div>
@@ -244,56 +253,63 @@ const StudentCommunity: React.FC = () => {
         </div>
       ) : (
         <div>
-          <div className="mb-8">
-            <button
-              onClick={() => setSelectedCommunity(null)}
-              className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Communities
-            </button>
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900">{community.name}</h2>
-                <p className="text-gray-600">Community • {community.instructor.firstName} {community.instructor.lastName}</p>
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+            <div>
+              <button
+                onClick={() => setSelectedCommunity(null)}
+                className="flex items-center text-blue-600 hover:text-blue-700 mb-4 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Communities
+              </button>
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">{community.name}</h1>
+                  <p className="text-gray-600">Community • {community.instructor.firstName} {community.instructor.lastName}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-xl">
-            {[
-              { id: 'announcements', label: 'Announcements', icon: Bell },
-              { id: 'discussions', label: 'Discussions', icon: MessageCircle },
-              { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen },
-              { id: 'chat', label: 'Live Chat', icon: Users }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setCommunityTab(tab.id as any);
-                  if (tab.id === 'browse-courses' && availableCourses.length === 0) {
-                    loadAvailableCourses();
-                  }
-                }}
-                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                  communityTab === tab.id
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+          {/* Tabs */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+            <div className="flex space-x-1 p-1">
+              {[
+                { id: 'announcements', label: 'Announcements', icon: Bell },
+                { id: 'discussions', label: 'Discussions', icon: MessageCircle },
+                { id: 'browse-courses', label: 'Browse Courses', icon: BookOpen },
+                { id: 'chat', label: 'Live Chat', icon: Users }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setCommunityTab(tab.id as any);
+                    if (tab.id === 'browse-courses' && availableCourses.length === 0) {
+                      loadAvailableCourses();
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                    communityTab === tab.id
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Tab Content */}
           {communityTab === 'announcements' && (
             <div className="space-y-6">
               {MOCK_DATA.announcements.map((announcement: any) => (
-                <div key={announcement.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div key={announcement.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-start space-x-4">
                     <img
                       src={announcement.avatar}
@@ -304,7 +320,7 @@ const StudentCommunity: React.FC = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
                           <h4 className="font-semibold text-gray-900">{community.instructor.firstName} {community.instructor.lastName}</h4>
-                          <span className="text-blue-600 text-sm font-medium bg-blue-100 px-2 py-1 rounded-full">
+                          <span className="bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-full">
                             Instructor
                           </span>
                           <span className={`text-xs font-medium px-2 py-1 rounded-full ${
@@ -328,7 +344,8 @@ const StudentCommunity: React.FC = () => {
 
           {communityTab === 'discussions' && (
             <div>
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+              {/* Create Post */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Start a discussion</h3>
                 <div className="flex items-start space-x-4">
                   <img
@@ -339,7 +356,7 @@ const StudentCommunity: React.FC = () => {
                   <div className="flex-1">
                     <textarea
                       placeholder="Ask a question, share your progress, or help other students..."
-                      className="w-full p-4 border border-gray-200 rounded-xl resize-none h-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full p-4 border border-gray-200 rounded-lg resize-none h-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex items-center space-x-4">
@@ -352,7 +369,7 @@ const StudentCommunity: React.FC = () => {
                       </div>
                       <button 
                         onClick={() => alert("Post discussion functionality")}
-                        className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300"
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                       >
                         Post Discussion
                       </button>
@@ -361,9 +378,10 @@ const StudentCommunity: React.FC = () => {
                 </div>
               </div>
 
+              {/* Discussion Posts */}
               <div className="space-y-6">
                 {MOCK_DATA.communityPosts.map((post: any) => (
-                  <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300">
+                  <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div className="flex items-start space-x-4">
                       <img
                         src={post.avatar}
@@ -422,7 +440,7 @@ const StudentCommunity: React.FC = () => {
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {availableCourses.map((course) => (
-                    <div key={course.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
                       <div className="relative">
                         <img
                           src={course.thumbnail_url || "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=400"}
@@ -446,8 +464,8 @@ const StudentCommunity: React.FC = () => {
 
                       <div className="p-6">
                         <div className="mb-3">
-                          <h4 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2">{course.title}</h4>
-                          <p className="text-gray-600 text-sm line-clamp-3">{course.description}</p>
+                          <h4 className="font-bold text-gray-900 text-lg mb-2">{course.title}</h4>
+                          <p className="text-gray-600 text-sm">{course.description}</p>
                         </div>
 
                         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -473,14 +491,14 @@ const StudentCommunity: React.FC = () => {
                         <div className="flex items-center space-x-3">
                           {course.isEnrolled ? (
                             <button 
-                              className="flex-1 bg-green-100 text-green-700 py-2 px-4 rounded-xl font-medium cursor-default"
+                              className="flex-1 bg-green-100 text-green-700 py-2 px-4 rounded-lg font-medium cursor-default"
                               disabled
                             >
                               Already Enrolled
                             </button>
                           ) : (
                             <button 
-                              className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-2 px-4 rounded-xl font-medium hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => handleEnrollInCourse(course.id)}
                               disabled={enrollingCourseId === course.id}
                             >
@@ -495,7 +513,7 @@ const StudentCommunity: React.FC = () => {
                             </button>
                           )}
                           <button 
-                            className="border border-gray-300 text-gray-700 py-2 px-4 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                            className="border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
                             onClick={() => alert('Course preview coming soon!')}
                           >
                             <Eye className="w-4 h-4" />
@@ -510,7 +528,7 @@ const StudentCommunity: React.FC = () => {
           )}
 
           {communityTab === 'chat' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 h-96 flex flex-col">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-96 flex flex-col">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">Live Chat</h3>
@@ -545,11 +563,11 @@ const StudentCommunity: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Type your message..."
-                    className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <button 
                     onClick={() => alert("Send message functionality")}
-                    className="bg-blue-500 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors"
+                    className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Send className="w-5 h-5" />
                   </button>
