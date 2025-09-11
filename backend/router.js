@@ -22,6 +22,14 @@ import {
   deleteLesson
 } from './controllers/courseController.js';
 import {
+  getAboutPage,
+  updateAboutPage,
+  createIntroContent,
+  updateIntroContent,
+  deleteIntroContent,
+  getPublicAboutPage
+} from './controllers/aboutPageController.js';
+import {
   getAvailableCourses,
   getEnrolledCourses,
   enrollInCourse,
@@ -66,6 +74,16 @@ router.get('/student/courses/enrolled', authenticateToken, requireRole(['student
 router.post('/student/courses/:courseId/enroll', authenticateToken, requireRole(['student']), enrollInCourse);
 router.get('/student/courses/:courseId/content', authenticateToken, requireRole(['student']), getStudentCourseContent);
 router.put('/student/lessons/:lessonId/progress', authenticateToken, requireRole(['student']), updateLessonProgress);
+
+// Instructor about page routes (protected)
+router.get('/instructor/about-page', authenticateToken, requireRole(['instructor']), getAboutPage);
+router.put('/instructor/about-page', authenticateToken, requireRole(['instructor']), updateAboutPage);
+router.post('/instructor/about-page/intro-content', authenticateToken, requireRole(['instructor']), createIntroContent);
+router.put('/instructor/about-page/intro-content/:contentId', authenticateToken, requireRole(['instructor']), updateIntroContent);
+router.delete('/instructor/about-page/intro-content/:contentId', authenticateToken, requireRole(['instructor']), deleteIntroContent);
+
+// Public about page route
+router.get('/public/about/:subdirectory', getPublicAboutPage);
 
 // Test routes
 router.get('/health', (req, res) => {

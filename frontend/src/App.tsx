@@ -24,7 +24,7 @@ import StudentCommunity from "./components/StudentCommunity";
 import StudentLiveCalls from "./components/StudentLiveCalls";
 import StudentProgress from "./components/StudentProgress";
 import StudentSettings from "./components/StudentSettings";
-
+import PublicAboutPage from "./components/PublicAboutPage";
 import AdminDashboard from "./components/AdminDashboard";
 
 // Component to handle redirects based on user role
@@ -63,7 +63,7 @@ function App() {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<AuthRedirect />} />
-            
+            <Route path="/about/:subdirectory" element={<PublicAboutPage />} />
             {/* Auth routes - wrapped with PublicRoute */}
             <Route
               path="/login/instructor"
