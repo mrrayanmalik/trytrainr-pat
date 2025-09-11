@@ -9,6 +9,7 @@ import {
   Play, Star, Users, BookOpen, Lock, Unlock, Loader2, Edit3,
   ChevronLeft, ChevronRight, Image, Video
 } from 'lucide-react';
+import IntroContentCarousel from './IntroContentCarousel';
 
 // Content Dialog Component
 interface ContentDialogProps {
@@ -26,8 +27,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
 
   useEffect(() => {
     if (existingContent) {
-      setDescription(existingContent.description);
-      // Don't pre-populate URLs for editing - user can add new ones
+      setDescription(existingContent.description || '');
       setVideoUrls(['']);
       setFiles([]);
       setRemoveMediaIds([]);
@@ -82,7 +82,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
   };
-
+  
   const toggleRemoveExistingMedia = (mediaId: string) => {
     if (removeMediaIds.includes(mediaId)) {
       setRemoveMediaIds(removeMediaIds.filter(id => id !== mediaId));
@@ -94,7 +94,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -109,7 +109,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
-              value={description}
+              value={description || ''} // Ensure never null
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               placeholder="Describe your intro content..."
@@ -118,7 +118,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
           </div>
 
           {/* Existing Media (for editing) */}
-          {existingContent && existingContent.instructor_intro_media_items.length > 0 && (
+          {existingContent && existingContent.instructor_intro_media_items && existingContent.instructor_intro_media_items.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Current Media</label>
               <div className="space-y-2">
@@ -157,7 +157,7 @@ const ContentDialog: React.FC<ContentDialogProps> = ({ isOpen, onClose, onSave, 
                 <div key={index} className="flex items-center space-x-2">
                   <input
                     type="url"
-                    value={url}
+                    value={url || ''} // Ensure never null
                     onChange={(e) => updateVideoUrl(index, e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
@@ -233,13 +233,12 @@ export default function InstructorWebsite() {
   const [showContentDialog, setShowContentDialog] = useState(false);
   const [editingContent, setEditingContent] = useState<IntroContent | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [realStats, setRealStats] = useState({
-    totalCourses: 0,
-    totalStudents: 0,
-    publishedCourses: 0
-  });
 
-  const [aboutPageData, setAboutPageData] = useState<AboutPageData>({
+  const [aboutPageData, setAboutPageData] = useState<AboutPageData & {
+    stats?: any;
+    availableCourses?: any[];
+    instructor?: any;
+  }>({
     id: '',
     title: `${user?.firstName || 'Your'} ${user?.lastName || 'Name'}'s Learning Community`,
     subtitle: 'Expert Instructor',
@@ -262,34 +261,20 @@ export default function InstructorWebsite() {
 
   useEffect(() => {
     loadAboutPage();
-    loadRealStats();
   }, []);
 
-  const loadRealStats = async () => {
-    try {
-      const courses = await courseService.getCourses();
-      const publishedCourses = courses.filter(c => c.is_published);
-      
-      let totalStudents = 0;
-      publishedCourses.forEach(course => {
-        totalStudents += Math.floor(Math.random() * 100) + 50;
-      });
-
-      setRealStats({
-        totalCourses: courses.length,
-        publishedCourses: publishedCourses.length,
-        totalStudents: totalStudents
-      });
-    } catch (error) {
-      console.error('Error loading real stats:', error);
-    }
-  };
-
+  // In the InstructorWebsite component, update the loadAboutPage function:
   const loadAboutPage = async () => {
     try {
       setLoading(true);
       const data = await aboutPageService.getAboutPage();
+      console.log('Loaded about page data:', data);
       setAboutPageData(data);
+      
+      // If there's intro content, make sure we're not in create mode
+      if (data.instructor_intro_content && data.instructor_intro_content.length > 0) {
+        console.log('Found existing intro content:', data.instructor_intro_content[0]);
+      }
     } catch (error) {
       console.error('Error loading about page:', error);
     } finally {
@@ -301,6 +286,8 @@ export default function InstructorWebsite() {
     try {
       setSaving(true);
       await aboutPageService.updateAboutPage(aboutPageData);
+      // Reload to get latest data with stats
+      await loadAboutPage();
       setShowSuccessAlert(true);
       setTimeout(() => setShowSuccessAlert(false), 3000);
     } catch (error) {
@@ -319,6 +306,7 @@ export default function InstructorWebsite() {
         is_published: true 
       });
       setAboutPageData(updatedData);
+      await loadAboutPage(); // Reload to get stats
       setShowSuccessAlert(true);
       setTimeout(() => setShowSuccessAlert(false), 5000);
     } catch (error) {
@@ -887,15 +875,15 @@ export default function InstructorWebsite() {
                         <div className="flex justify-center items-center space-x-8 mb-6">
                           <div className="flex items-center space-x-2">
                             <BookOpen className="w-5 h-5 text-gray-500" />
-                            <span className="text-gray-700">{realStats.publishedCourses} Course{realStats.publishedCourses !== 1 ? 's' : ''}</span>
+                            <span className="text-gray-700">{aboutPageData.stats?.totalCourses || 0} Course{(aboutPageData.stats?.totalCourses || 0) !== 1 ? 's' : ''}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Users className="w-5 h-5 text-gray-500" />
-                            <span className="text-gray-700">{realStats.totalStudents.toLocaleString()} students</span>
+                            <span className="text-gray-700">{(aboutPageData.stats?.totalStudents || 0).toLocaleString()} students</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Star className="w-5 h-5 text-yellow-500" />
-                            <span className="text-gray-700">4.9 rating</span>
+                            <span className="text-gray-700">{aboutPageData.stats?.rating || 4.9} rating</span>
                           </div>
                         </div>
                         <p className="text-lg text-gray-600 mb-2">{aboutPageData.subtitle}</p>
@@ -914,58 +902,10 @@ export default function InstructorWebsite() {
                         </p>
                       </div>
 
-                      {/* Intro Media Section */}
-                      {introContent && mediaItems.length > 0 && (
+                      {/* Intro Content Carousel */}
+                      {introContent && (
                         <div className="mb-12">
-                          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="relative">
-                              {currentMedia.type === 'video' && getEmbedUrl(currentMedia.url) ? (
-                                <div className="aspect-video">
-                                  <iframe
-                                    src={getEmbedUrl(currentMedia.url)}
-                                    className="w-full h-full"
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                  />
-                                </div>
-                              ) : currentMedia.type === 'image' ? (
-                                <img
-                                  src={currentMedia.url}
-                                  alt="Community media"
-                                  className="w-full h-64 object-cover"
-                                />
-                              ) : (
-                                <div className="aspect-video bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center">
-                                  <div className="text-center text-white">
-                                    <Play className="w-16 h-16 text-white mb-4 mx-auto" />
-                                    <h3 className="text-xl font-bold">Media Content</h3>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Navigation dots */}
-                              {mediaItems.length > 1 && (
-                                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                                  {mediaItems.map((_, index) => (
-                                    <button
-                                      key={index}
-                                      onClick={() => setCurrentMediaIndex(index)}
-                                      className={`w-2 h-2 rounded-full ${
-                                        index === currentMediaIndex ? 'bg-white' : 'bg-white/50'
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {introContent.description && (
-                              <div className="p-6">
-                                <p className="text-gray-700">{introContent.description}</p>
-                              </div>
-                            )}
-                          </div>
+                          <IntroContentCarousel introContent={introContent} />
                         </div>
                       )}
 
@@ -982,7 +922,7 @@ export default function InstructorWebsite() {
                             <div className="grid md:grid-cols-3 gap-6 mb-8">
                               <div className="text-center">
                                 <div className="text-3xl font-bold text-purple-600 mb-2">
-                                  {realStats.totalStudents.toLocaleString()}
+                                  {(aboutPageData.stats?.totalStudents || 0).toLocaleString()}
                                 </div>
                                 <div className="text-sm text-gray-600">Active Members</div>
                               </div>
@@ -1008,6 +948,35 @@ export default function InstructorWebsite() {
                               <p className="text-sm text-gray-500 mt-2">No credit card required</p>
                             </div>
                           </div>
+
+                          {/* Available Courses */}
+                          {aboutPageData.availableCourses && aboutPageData.availableCourses.length > 0 && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                              <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Courses</h2>
+                              <div className="grid gap-6">
+                                {aboutPageData.availableCourses.map((course: any) => (
+                                  <div key={course.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                                    <div className="flex items-start space-x-4">
+                                      {course.thumbnail_url && (
+                                        <img
+                                          src={course.thumbnail_url}
+                                          alt={course.title}
+                                          className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
+                                        />
+                                      )}
+                                      <div className="flex-1">
+                                        <h3 className="font-bold text-lg text-gray-900 mb-2">{course.title}</h3>
+                                        {course.description && (
+                                          <p className="text-sm text-gray-600 mb-2">{course.description}</p>
+                                        )}
+                                        <p className="text-sm text-blue-600 font-medium">Join the community to access this course</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Sidebar */}
@@ -1027,7 +996,7 @@ export default function InstructorWebsite() {
                                   <p className="text-sm text-gray-600">{aboutPageData.subtitle}</p>
                                   <div className="flex items-center mt-1">
                                     <Star className="w-4 h-4 text-yellow-500" />
-                                    <span className="text-sm ml-1">4.9 • {realStats.totalStudents.toLocaleString()} students</span>
+                                    <span className="text-sm ml-1">{aboutPageData.stats?.rating || 4.9} • {(aboutPageData.stats?.totalStudents || 0).toLocaleString()} students</span>
                                   </div>
                                 </div>
                               </div>

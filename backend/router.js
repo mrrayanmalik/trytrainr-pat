@@ -27,7 +27,8 @@ import {
   createIntroContent,
   updateIntroContent,
   deleteIntroContent,
-  getPublicAboutPage
+  getPublicAboutPage,
+  joinCommunity
 } from './controllers/aboutPageController.js';
 import {
   getAvailableCourses,
@@ -84,6 +85,47 @@ router.delete('/instructor/about-page/intro-content/:contentId', authenticateTok
 
 // Public about page route
 router.get('/public/about/:subdirectory', getPublicAboutPage);
+
+// Join community route (for students)
+router.post('/public/about/:subdirectory/join', authenticateToken, requireRole(['student']), joinCommunity);
+
+// Add this temporary test endpoint to router.js
+router.get('/test/intro-content-debug', authenticateToken, requireRole(['instructor']), async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const instructorId = req.user.instructors[0].id;
+    
+    console.log('Testing queries for instructor:', instructorId);
+
+    // Test the exact query from getAboutPage
+    const { data: aboutPageWithContent, error: queryError } = await supabase
+      .from('instructor_about_pages')
+      .select(`
+        *,
+        instructor_intro_content (
+          *,
+          instructor_intro_media_items (*)
+        )
+      `)
+      .eq('instructor_id', instructorId)
+      .single();
+
+    console.log('Query error:', queryError);
+    console.log('Raw query result:', JSON.stringify(aboutPageWithContent, null, 2));
+
+    res.json({
+      success: true,
+      queryError,
+      data: aboutPageWithContent,
+      instructor_intro_content: aboutPageWithContent?.instructor_intro_content,
+      media_items: aboutPageWithContent?.instructor_intro_content?.[0]?.instructor_intro_media_items
+    });
+
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Test routes
 router.get('/health', (req, res) => {

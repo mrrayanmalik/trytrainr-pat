@@ -104,4 +104,16 @@ export const studentCourseService = {
     });
     if (!response.ok) throw new Error('Failed to update lesson progress');
   },
+
+  // Join community
+  async joinCommunity(subdirectory: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/public/about/${subdirectory}/join`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to join community');
+    }
+  },
 };

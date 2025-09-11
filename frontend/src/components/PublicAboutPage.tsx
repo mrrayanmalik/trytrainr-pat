@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { aboutPageService } from '../services/aboutPageService';
+import { studentCourseService } from '../services/studentCourseService';
 import { useAuth } from '../contexts/AuthContext';
+import IntroContentCarousel from './IntroContentCarousel';
 import { 
-  Users, BookOpen, Star, Play, Loader2, Globe, Unlock, 
-  ChevronLeft, ChevronRight, Image, Video
+  Users, BookOpen, Star, Loader2, Globe, Unlock
 } from 'lucide-react';
 
 interface PublicAboutPageData {
@@ -44,6 +45,8 @@ interface PublicAboutPageData {
   availableCourses: Array<{
     id: string;
     title: string;
+    thumbnail_url?: string;
+    description?: string;
   }>;
 }
 
@@ -54,7 +57,7 @@ const PublicAboutPage: React.FC = () => {
   const [aboutPageData, setAboutPageData] = useState<PublicAboutPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [joiningCommunity, setJoiningCommunity] = useState(false);
 
   useEffect(() => {
     if (subdirectory) {
@@ -76,27 +79,26 @@ const PublicAboutPage: React.FC = () => {
     }
   };
 
-  const handleJoinCommunity = () => {
+  const handleJoinCommunity = async () => {
     if (user) {
       if (user.role === 'student') {
-        navigate('/student/community');
+        try {
+          setJoiningCommunity(true);
+          await studentCourseService.joinCommunity(subdirectory!);
+          alert('Successfully joined the community! Redirecting to your dashboard...');
+          navigate('/student/community');
+        } catch (error: any) {
+          console.error('Error joining community:', error);
+          alert(error.message || 'Failed to join community');
+        } finally {
+          setJoiningCommunity(false);
+        }
       } else {
         alert('You need a student account to join this community');
       }
     } else {
-      navigate('/signup/student');
+      navigate('/login/student');
     }
-  };
-
-  const getYouTubeVideoId = (url: string) => {
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  };
-
-  const getEmbedUrl = (url: string) => {
-    const videoId = getYouTubeVideoId(url);
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
   };
 
   if (loading) {
@@ -129,8 +131,6 @@ const PublicAboutPage: React.FC = () => {
   }
 
   const introContent = aboutPageData.instructor_intro_content?.[0];
-  const mediaItems = introContent?.instructor_intro_media_items || [];
-  const currentMedia = mediaItems[currentMediaIndex];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -191,10 +191,11 @@ const PublicAboutPage: React.FC = () => {
           <div className="flex justify-center mb-8">
             <button 
               onClick={handleJoinCommunity}
+              disabled={joiningCommunity}
               style={{ backgroundColor: aboutPageData.primary_color }}
-              className="text-white px-8 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow-lg"
+              className="text-white px-8 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:transform-none"
             >
-              Join Learning Community
+              {joiningCommunity ? 'Joining...' : 'Join Learning Community'}
             </button>
           </div>
           <p className="text-sm text-gray-600 flex items-center justify-center">
@@ -203,58 +204,10 @@ const PublicAboutPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Intro Media */}
-        {introContent && mediaItems.length > 0 && (
+        {/* Intro Content Carousel */}
+        {introContent && (
           <div className="mb-12">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="relative">
-                {currentMedia.type === 'video' && getEmbedUrl(currentMedia.url) ? (
-                  <div className="aspect-video">
-                    <iframe
-                      src={getEmbedUrl(currentMedia.url)}
-                      className="w-full h-full"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                ) : currentMedia.type === 'image' ? (
-                  <img
-                    src={currentMedia.url}
-                    alt="Community media"
-                    className="w-full h-64 object-cover"
-                  />
-                ) : (
-                  <div className="aspect-video bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Play className="w-16 h-16 text-white mb-4 mx-auto" />
-                      <h3 className="text-xl font-bold">Media Content</h3>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Navigation dots */}
-                {mediaItems.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {mediaItems.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentMediaIndex(index)}
-                        className={`w-2 h-2 rounded-full ${
-                          index === currentMediaIndex ? 'bg-white' : 'bg-white/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {introContent.description && (
-                <div className="p-6">
-                  <p className="text-gray-700">{introContent.description}</p>
-                </div>
-              )}
-            </div>
+            <IntroContentCarousel introContent={introContent} />
           </div>
         )}
 
@@ -291,10 +244,11 @@ const PublicAboutPage: React.FC = () => {
                 <p className="text-gray-600 mb-6">Get instant access to all courses, community support, and exclusive content</p>
                 <button 
                   onClick={handleJoinCommunity}
+                  disabled={joiningCommunity}
                   style={{ backgroundColor: aboutPageData.primary_color }}
-                  className="text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
+                  className="text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  Join FREE
+                  {joiningCommunity ? 'Joining...' : 'Join FREE'}
                 </button>
                 <p className="text-sm text-gray-500 mt-2">No credit card required</p>
               </div>
@@ -304,11 +258,25 @@ const PublicAboutPage: React.FC = () => {
             {aboutPageData.availableCourses.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Courses</h2>
-                <div className="grid gap-4">
+                <div className="grid gap-6">
                   {aboutPageData.availableCourses.map((course) => (
-                    <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <h3 className="font-bold text-lg text-gray-900">{course.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">Join the community to access this course</p>
+                    <div key={course.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start space-x-4">
+                        {course.thumbnail_url && (
+                          <img
+                            src={course.thumbnail_url}
+                            alt={course.title}
+                            className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg text-gray-900 mb-2">{course.title}</h3>
+                          {course.description && (
+                            <p className="text-sm text-gray-600 mb-2">{course.description}</p>
+                          )}
+                          <p className="text-sm text-blue-600 font-medium">Join the community to access this course</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -351,10 +319,11 @@ const PublicAboutPage: React.FC = () => {
                   </p>
                   <button 
                     onClick={handleJoinCommunity}
+                    disabled={joiningCommunity}
                     style={{ backgroundColor: aboutPageData.primary_color }}
-                    className="w-full text-white py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
+                    className="w-full text-white py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    Join Learning Community - FREE
+                    {joiningCommunity ? 'Joining...' : 'Join Learning Community - FREE'}
                   </button>
                 </div>
               </div>

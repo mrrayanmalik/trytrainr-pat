@@ -39,7 +39,10 @@ export const aboutPageService = {
     const response = await fetch(`${API_URL}/api/instructor/about-page`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch about page');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch about page');
+    }
     return response.json();
   },
 
@@ -52,7 +55,10 @@ export const aboutPageService = {
       },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Failed to update about page');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update about page');
+    }
     return response.json();
   },
 
@@ -81,7 +87,13 @@ export const aboutPageService = {
       headers: getAuthHeaders(),
       body: formData,
     });
-    if (!response.ok) throw new Error('Failed to create intro content');
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Create intro content error response:', error);
+      throw new Error(error.error || 'Failed to create intro content');
+    }
+    
     return response.json();
   },
 

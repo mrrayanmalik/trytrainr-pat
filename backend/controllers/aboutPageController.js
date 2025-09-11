@@ -55,26 +55,27 @@ const uploadFileToStorage = async (file, folder = 'about-page-media') => {
 export const getAboutPage = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
+    const instructorId = req.user.instructors[0].id;
     
-    const { data: aboutPage, error } = await supabase
+    console.log('Getting about page for instructor:', instructorId);
+
+    // First, get the about page
+    const { data: aboutPage, error: aboutPageError } = await supabase
       .from('instructor_about_pages')
-      .select(`
-        *,
-        instructor_intro_content (
-          *,
-          instructor_intro_media_items (*)
-        )
-      `)
-      .eq('instructor_id', req.user.instructors[0].id)
+      .select('*')
+      .eq('instructor_id', instructorId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      return res.status(400).json({ error: error.message });
+    console.log('About page query:', { aboutPage, aboutPageError });
+
+    if (aboutPageError && aboutPageError.code !== 'PGRST116') {
+      return res.status(400).json({ error: aboutPageError.message });
     }
 
     if (!aboutPage) {
+      // Create default about page
       const defaultData = {
-        instructor_id: req.user.instructors[0].id,
+        instructor_id: instructorId,
         title: `${req.user.first_name || 'Your'} ${req.user.last_name || 'Name'}'s Learning Community`,
         subtitle: 'Expert Instructor',
         description: 'Welcome to my learning community! Join a thriving community of learners.',
@@ -88,23 +89,87 @@ export const getAboutPage = async (req, res) => {
       const { data: newAboutPage, error: createError } = await supabase
         .from('instructor_about_pages')
         .insert(defaultData)
-        .select(`
-          *,
-          instructor_intro_content (
-            *,
-            instructor_intro_media_items (*)
-          )
-        `)
+        .select()
         .single();
 
       if (createError) {
         return res.status(400).json({ error: createError.message });
       }
 
-      return res.json(newAboutPage);
+      aboutPage = newAboutPage;
     }
 
-    res.json(aboutPage);
+    // Separately get intro content
+    const { data: introContent, error: introError } = await supabase
+      .from('instructor_intro_content')
+      .select('*')
+      .eq('about_page_id', aboutPage.id);
+
+    console.log('Intro content query:', { introContent, introError });
+
+    // If intro content exists, get media items
+    let mediaItems = [];
+    if (introContent && introContent.length > 0) {
+      const { data: media, error: mediaError } = await supabase
+        .from('instructor_intro_media_items')
+        .select('*')
+        .eq('intro_content_id', introContent[0].id)
+        .order('order_index');
+
+      console.log('Media items query:', { media, mediaError });
+      mediaItems = media || [];
+    }
+
+    // Manually construct the nested structure
+    const formattedIntroContent = introContent && introContent.length > 0 ? [{
+      ...introContent[0],
+      instructor_intro_media_items: mediaItems
+    }] : [];
+
+    console.log('Formatted intro content:', formattedIntroContent);
+
+    // Get course stats 
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('id, title, is_published, thumbnail_url, description')
+      .eq('instructor_id', instructorId);
+
+    const publishedCourses = courses?.filter(c => c.is_published) || [];
+
+    // Get student count from enrollments
+    const { data: enrollments } = await supabase
+      .from('enrollments')
+      .select('student_id')
+      .in('course_id', publishedCourses.map(c => c.id));
+
+    const uniqueStudents = new Set(enrollments?.map(e => e.student_id) || []).size;
+
+    const responseData = {
+      ...aboutPage,
+      instructor_intro_content: formattedIntroContent,
+      stats: {
+        totalCourses: publishedCourses.length,
+        totalStudents: uniqueStudents,
+        rating: 4.9
+      },
+      availableCourses: publishedCourses.map(course => ({
+        id: course.id,
+        title: course.title,
+        thumbnail_url: course.thumbnail_url,
+        description: course.description
+      })),
+      instructor: {
+        id: instructorId,
+        business_name: req.user.instructors[0].business_name,
+        users: {
+          first_name: req.user.first_name,
+          last_name: req.user.last_name
+        }
+      }
+    };
+
+    console.log('Final response - intro content:', responseData.instructor_intro_content);
+    res.json(responseData);
   } catch (error) {
     console.error('Get about page error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -154,29 +219,79 @@ export const createIntroContent = [
       const supabase = getSupabaseClient();
       const { description, videoUrls } = req.body;
 
+      console.log('Creating intro content:', { 
+        description, 
+        videoUrls, 
+        files: req.files?.length,
+        user: req.user?.id,
+        instructor: req.user?.instructors?.[0]?.id 
+      });
+
       if (!description) {
+        console.log('Error: Description is required');
         return res.status(400).json({ error: 'Description is required' });
       }
 
+      // Check if user has instructor profile
+      if (!req.user.instructors || req.user.instructors.length === 0) {
+        console.log('Error: User has no instructor profile');
+        return res.status(400).json({ error: 'No instructor profile found' });
+      }
+
+      const instructorId = req.user.instructors[0].id;
+      console.log('Instructor ID:', instructorId);
+
       // Get about page
-      const { data: aboutPage } = await supabase
+      const { data: aboutPage, error: aboutPageError } = await supabase
         .from('instructor_about_pages')
         .select('id')
-        .eq('instructor_id', req.user.instructors[0].id)
+        .eq('instructor_id', instructorId)
         .single();
 
-      if (!aboutPage) {
-        return res.status(404).json({ error: 'About page not found' });
+      console.log('About page query result:', { aboutPage, aboutPageError });
+
+      if (aboutPageError || !aboutPage) {
+        console.log('Error: About page not found, creating one...');
+        
+        // Create about page if it doesn't exist
+        const defaultData = {
+          instructor_id: instructorId,
+          title: `${req.user.first_name || 'Your'} ${req.user.last_name || 'Name'}'s Learning Community`,
+          subtitle: 'Expert Instructor',
+          description: 'Welcome to my learning community! Join a thriving community of learners.',
+          instructor_bio: 'Passionate educator helping students achieve their learning goals.',
+          primary_color: '#8b5cf6',
+          secondary_color: '#3b82f6',
+          subdirectory: req.user.instructors[0].subdirectory,
+          is_published: false
+        };
+
+        const { data: newAboutPage, error: createError } = await supabase
+          .from('instructor_about_pages')
+          .insert(defaultData)
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.log('Error creating about page:', createError);
+          return res.status(400).json({ error: 'Failed to create about page: ' + createError.message });
+        }
+
+        aboutPage = newAboutPage;
+        console.log('Created new about page:', aboutPage);
       }
 
       // Check if intro content already exists
-      const { data: existingContent } = await supabase
+      const { data: existingContent, error: existingError } = await supabase
         .from('instructor_intro_content')
         .select('id')
         .eq('about_page_id', aboutPage.id)
         .single();
 
+      console.log('Existing content check:', { existingContent, existingError });
+
       if (existingContent) {
+        console.log('Error: Intro content already exists');
         return res.status(400).json({ error: 'Intro content already exists. Use update instead.' });
       }
 
@@ -190,20 +305,25 @@ export const createIntroContent = [
         .select()
         .single();
 
+      console.log('Intro content creation result:', { introContent, contentError });
+
       if (contentError) {
-        return res.status(400).json({ error: contentError.message });
+        console.error('Content creation error:', contentError);
+        return res.status(400).json({ error: 'Failed to create intro content: ' + contentError.message });
       }
 
       // Process video URLs
       const mediaItems = [];
       if (videoUrls) {
         const urls = Array.isArray(videoUrls) ? videoUrls : [videoUrls];
+        console.log('Processing video URLs:', urls);
+        
         for (let i = 0; i < urls.length; i++) {
-          if (urls[i]) {
+          if (urls[i] && urls[i].trim()) {
             mediaItems.push({
               intro_content_id: introContent.id,
               type: 'video',
-              url: urls[i],
+              url: urls[i].trim(),
               order_index: mediaItems.length
             });
           }
@@ -212,6 +332,8 @@ export const createIntroContent = [
 
       // Process uploaded files
       if (req.files && req.files.length > 0) {
+        console.log('Processing uploaded files:', req.files.length);
+        
         for (const file of req.files) {
           try {
             const uploadResult = await uploadFileToStorage(file);
@@ -229,6 +351,8 @@ export const createIntroContent = [
         }
       }
 
+      console.log('Media items to insert:', mediaItems);
+
       // Insert media items
       if (mediaItems.length > 0) {
         const { error: mediaError } = await supabase
@@ -237,11 +361,12 @@ export const createIntroContent = [
 
         if (mediaError) {
           console.error('Media items insert error:', mediaError);
+          return res.status(400).json({ error: 'Failed to insert media items: ' + mediaError.message });
         }
       }
 
       // Return complete intro content with media items
-      const { data: completeContent } = await supabase
+      const { data: completeContent, error: fetchError } = await supabase
         .from('instructor_intro_content')
         .select(`
           *,
@@ -250,10 +375,16 @@ export const createIntroContent = [
         .eq('id', introContent.id)
         .single();
 
+      if (fetchError) {
+        console.error('Error fetching complete content:', fetchError);
+        return res.status(400).json({ error: 'Failed to fetch complete content: ' + fetchError.message });
+      }
+
+      console.log('Successfully created intro content:', completeContent);
       res.status(201).json(completeContent);
     } catch (error) {
       console.error('Create intro content error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error: ' + error.message });
     }
   }
 ];
@@ -330,11 +461,11 @@ export const updateIntroContent = [
         let nextOrderIndex = existingMedia && existingMedia.length > 0 ? existingMedia[0].order_index + 1 : 0;
 
         for (let i = 0; i < urls.length; i++) {
-          if (urls[i]) {
+          if (urls[i] && urls[i].trim()) {
             newMediaItems.push({
               intro_content_id: contentId,
               type: 'video',
-              url: urls[i],
+              url: urls[i].trim(),
               order_index: nextOrderIndex++
             });
           }
@@ -462,14 +593,13 @@ export const getPublicAboutPage = async (req, res) => {
     const supabase = getSupabaseClient();
     const { subdirectory } = req.params;
 
+    console.log('Getting public about page for subdirectory:', subdirectory);
+
+    // Use the same approach as getAboutPage - separate queries
     const { data: aboutPage, error } = await supabase
       .from('instructor_about_pages')
       .select(`
         *,
-        instructor_intro_content (
-          *,
-          instructor_intro_media_items (*)
-        ),
         instructors!inner(
           id,
           business_name,
@@ -480,14 +610,46 @@ export const getPublicAboutPage = async (req, res) => {
       .eq('is_published', true)
       .single();
 
+    console.log('Public about page query result:', { aboutPage, error });
+
     if (error) {
+      console.log('Public about page not found:', error);
       return res.status(404).json({ error: 'About page not found' });
     }
+
+    // Separately get intro content
+    const { data: introContent, error: introError } = await supabase
+      .from('instructor_intro_content')
+      .select('*')
+      .eq('about_page_id', aboutPage.id);
+
+    console.log('Public intro content query:', { introContent, introError });
+
+    // If intro content exists, get media items
+    let mediaItems = [];
+    if (introContent && introContent.length > 0) {
+      const { data: media, error: mediaError } = await supabase
+        .from('instructor_intro_media_items')
+        .select('*')
+        .eq('intro_content_id', introContent[0].id)
+        .order('order_index');
+
+      console.log('Public media items query:', { media, mediaError });
+      mediaItems = media || [];
+    }
+
+    // Manually construct the nested structure
+    const formattedIntroContent = introContent && introContent.length > 0 ? [{
+      ...introContent[0],
+      instructor_intro_media_items: mediaItems
+    }] : [];
+
+    console.log('Public formatted intro content:', formattedIntroContent);
 
     // Get course stats
     const { data: courses } = await supabase
       .from('courses')
-      .select('id, title, is_published')
+      .select('id, title, is_published, thumbnail_url, description')
       .eq('instructor_id', aboutPage.instructors.id);
 
     const publishedCourses = courses?.filter(c => c.is_published) || [];
@@ -502,6 +664,7 @@ export const getPublicAboutPage = async (req, res) => {
 
     const responseData = {
       ...aboutPage,
+      instructor_intro_content: formattedIntroContent,
       stats: {
         totalCourses: publishedCourses.length,
         totalStudents: uniqueStudents,
@@ -509,14 +672,74 @@ export const getPublicAboutPage = async (req, res) => {
       },
       availableCourses: publishedCourses.map(course => ({
         id: course.id,
-        title: course.title
+        title: course.title,
+        thumbnail_url: course.thumbnail_url,
+        description: course.description
       })),
       instructor: aboutPage.instructors
     };
 
+    console.log('Public final response - intro content:', responseData.instructor_intro_content);
     res.json(responseData);
   } catch (error) {
     console.error('Get public about page error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// New endpoint for joining community
+export const joinCommunity = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { subdirectory } = req.params;
+    const studentId = req.user.students[0].id;
+
+    // Get instructor by subdirectory
+    const { data: aboutPage, error: aboutError } = await supabase
+      .from('instructor_about_pages')
+      .select(`
+        instructors!inner(id)
+      `)
+      .eq('subdirectory', subdirectory)
+      .eq('is_published', true)
+      .single();
+
+    if (aboutError || !aboutPage) {
+      return res.status(404).json({ error: 'Community not found' });
+    }
+
+    const instructorId = aboutPage.instructors.id;
+
+    // Check if student is already part of this community
+    const { data: existingStudent } = await supabase
+      .from('students')
+      .select('id')
+      .eq('id', studentId)
+      .eq('instructor_id', instructorId)
+      .single();
+
+    if (existingStudent) {
+      return res.status(400).json({ error: 'Already a member of this community' });
+    }
+
+    // Update student's instructor_id to join the community
+    const { data: updatedStudent, error: updateError } = await supabase
+      .from('students')
+      .update({ instructor_id: instructorId })
+      .eq('id', studentId)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    res.json({ 
+      message: 'Successfully joined the community!',
+      student: updatedStudent
+    });
+  } catch (error) {
+    console.error('Join community error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
