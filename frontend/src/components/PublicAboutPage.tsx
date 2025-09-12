@@ -107,7 +107,7 @@ const PublicAboutPage: React.FC = () => {
     
     // Redirect to student login with state indicating they came from community
     navigate('/login/student', { state: { fromCommunity: true } });
-      }
+      } 
   };
 
   if (loading) {
