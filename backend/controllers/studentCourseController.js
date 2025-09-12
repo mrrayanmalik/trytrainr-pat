@@ -6,21 +6,96 @@ const getSupabaseClient = () => {
   return createClient(supabaseUrl, supabaseKey);
 };
 
-// Get courses from student's instructor/community (published only)
-export const getAvailableCourses = async (req, res) => {
+// Get all communities a student has joined
+export const getStudentCommunities = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const studentId = req.user.students[0].id;
+
+    const { data: communities, error } = await supabase
+      .from('student_communities')
+      .select(`
+        *,
+        instructors (
+          id,
+          business_name,
+          subdirectory,
+          users (
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .eq('student_id', studentId)
+      .eq('is_active', true);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Get stats for each community
+    const communitiesWithStats = await Promise.all(
+      communities.map(async (community) => {
+        const instructorId = community.instructors.id;
+        
+        // Get course stats
+        const { data: courses } = await supabase
+          .from('courses')
+          .select(`
+            id,
+            is_published,
+            enrollments!enrollments_course_id_fkey (id)
+          `)
+          .eq('instructor_id', instructorId);
+
+        const publishedCourses = courses?.filter(c => c.is_published) || [];
+        const totalStudents = new Set(courses?.flatMap(c => c.enrollments?.map(e => e.id)) || []).size;
+
+        return {
+          id: community.id,
+          instructorId: instructorId,
+          name: community.instructors.business_name,
+          subdirectory: community.instructors.subdirectory,
+          instructor: {
+            firstName: community.instructors.users.first_name,
+            lastName: community.instructors.users.last_name,
+            email: community.instructors.users.email
+          },
+          joinedAt: community.joined_at,
+          stats: {
+            totalCourses: publishedCourses.length,
+            totalStudents: totalStudents
+          }
+        };
+      })
+    );
+
+    res.json(communitiesWithStats);
+  } catch (error) {
+    console.error('Get student communities error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get courses from a specific community
+export const getCommunityAvailableCourses = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { instructorId } = req.params;
+    const studentId = req.user.students[0].id;
     
-    // Get student's instructor
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('instructor_id')
-      .eq('id', studentId)
+    // Verify student is part of this community
+    const { data: membership, error: membershipError } = await supabase
+      .from('student_communities')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId)
+      .eq('is_active', true)
       .single();
 
-    if (studentError || !student.instructor_id) {
-      return res.status(400).json({ error: 'Student not assigned to any instructor' });
+    if (membershipError || !membership) {
+      return res.status(403).json({ error: 'You are not a member of this community' });
     }
 
     // Get published courses from the instructor
@@ -38,7 +113,75 @@ export const getAvailableCourses = async (req, res) => {
           student_id
         )
       `)
-      .eq('instructor_id', student.instructor_id)
+      .eq('instructor_id', instructorId)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Add enrollment status and statistics for each course
+    const coursesWithStats = courses.map(course => {
+      const totalLessons = course.modules?.reduce((sum, module) => sum + (module.lessons?.length || 0), 0) || 0;
+      const totalStudents = course.enrollments?.length || 0;
+      const isEnrolled = course.enrollments?.some(enrollment => enrollment.student_id === studentId) || false;
+
+      return {
+        ...course,
+        totalLessons,
+        totalStudents,
+        isEnrolled,
+        enrollments: undefined // Remove enrollments from response for privacy
+      };
+    });
+
+    res.json(coursesWithStats);
+  } catch (error) {
+    console.error('Get community available courses error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// LEGACY: Get available courses from ALL communities (for backward compatibility)
+export const getAvailableCourses = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const studentId = req.user.students[0].id;
+    
+    // Get all communities the student is part of
+    const { data: communities, error: communitiesError } = await supabase
+      .from('student_communities')
+      .select('instructor_id')
+      .eq('student_id', studentId)
+      .eq('is_active', true);
+
+    if (communitiesError) {
+      return res.status(400).json({ error: communitiesError.message });
+    }
+
+    if (!communities || communities.length === 0) {
+      return res.json([]); // No communities joined yet
+    }
+
+    const instructorIds = communities.map(c => c.instructor_id);
+
+    // Get published courses from all instructors the student follows
+    const { data: courses, error } = await supabase
+      .from('courses')
+      .select(`
+        *,
+        modules (
+          id,
+          title,
+          lessons (id)
+        ),
+        enrollments!enrollments_course_id_fkey (
+          id,
+          student_id
+        )
+      `)
+      .in('instructor_id', instructorIds)
       .eq('is_published', true)
       .order('created_at', { ascending: false });
 
@@ -68,7 +211,83 @@ export const getAvailableCourses = async (req, res) => {
   }
 };
 
-// Get student's enrolled courses
+// Join a community
+export const joinCommunity = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { subdirectory } = req.params;
+    const studentId = req.user.students[0].id;
+
+    // Get instructor by subdirectory
+    const { data: aboutPage, error: aboutError } = await supabase
+      .from('instructor_about_pages')
+      .select(`
+        instructors!inner(id)
+      `)
+      .eq('subdirectory', subdirectory)
+      .eq('is_published', true)
+      .single();
+
+    if (aboutError || !aboutPage) {
+      return res.status(404).json({ error: 'Community not found' });
+    }
+
+    const instructorId = aboutPage.instructors.id;
+
+    // Check if student is already part of this community
+    const { data: existingMembership } = await supabase
+      .from('student_communities')
+      .select('id, is_active')
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId)
+      .single();
+
+    if (existingMembership) {
+      if (existingMembership.is_active) {
+        return res.status(400).json({ error: 'Already a member of this community' });
+      } else {
+        // Reactivate membership
+        const { error: updateError } = await supabase
+          .from('student_communities')
+          .update({ is_active: true, joined_at: new Date().toISOString() })
+          .eq('id', existingMembership.id);
+
+        if (updateError) {
+          return res.status(400).json({ error: updateError.message });
+        }
+
+        return res.json({ 
+          message: 'Successfully rejoined the community!',
+          membershipId: existingMembership.id
+        });
+      }
+    }
+
+    // Create new community membership
+    const { data: membership, error: membershipError } = await supabase
+      .from('student_communities')
+      .insert({
+        student_id: studentId,
+        instructor_id: instructorId
+      })
+      .select()
+      .single();
+
+    if (membershipError) {
+      return res.status(400).json({ error: membershipError.message });
+    }
+
+    res.json({ 
+      message: 'Successfully joined the community!',
+      membershipId: membership.id
+    });
+  } catch (error) {
+    console.error('Join community error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get student's enrolled courses (from all communities)
 export const getEnrolledCourses = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
@@ -81,7 +300,8 @@ export const getEnrolledCourses = async (req, res) => {
         courses (
           *,
           instructors (
-            users (first_name, last_name)
+            users (first_name, last_name),
+            business_name
           ),
           modules (
             id,
@@ -117,7 +337,8 @@ export const getEnrolledCourses = async (req, res) => {
         progressPercentage,
         instructor: course.instructors?.users ? {
           firstName: course.instructors.users.first_name,
-          lastName: course.instructors.users.last_name
+          lastName: course.instructors.users.last_name,
+          businessName: course.instructors.business_name
         } : null
       };
     });
@@ -129,7 +350,7 @@ export const getEnrolledCourses = async (req, res) => {
   }
 };
 
-// Enroll student in a course
+// Enroll student in a course (must be member of community first)
 export const enrollInCourse = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
@@ -151,15 +372,17 @@ export const enrollInCourse = async (req, res) => {
       return res.status(400).json({ error: 'Course is not published' });
     }
 
-    // Verify student belongs to this instructor
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('instructor_id')
-      .eq('id', studentId)
+    // Verify student is part of the instructor's community
+    const { data: membership, error: membershipError } = await supabase
+      .from('student_communities')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('instructor_id', course.instructor_id)
+      .eq('is_active', true)
       .single();
 
-    if (studentError || student.instructor_id !== course.instructor_id) {
-      return res.status(403).json({ error: 'You can only enroll in courses from your instructor' });
+    if (membershipError || !membership) {
+      return res.status(403).json({ error: 'You must join this instructor\'s community first to enroll in their courses' });
     }
 
     // Check if already enrolled
@@ -338,14 +561,15 @@ export const updateLessonProgress = async (req, res) => {
   }
 };
 
-// Get student's instructor/community info
+// LEGACY: Get student's community info (returns first community for backward compatibility)
 export const getStudentCommunity = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const studentId = req.user.students[0].id;
 
-    const { data: student, error } = await supabase
-      .from('students')
+    // Get the first active community (for backward compatibility)
+    const { data: community, error } = await supabase
+      .from('student_communities')
       .select(`
         instructor_id,
         instructors (
@@ -358,14 +582,16 @@ export const getStudentCommunity = async (req, res) => {
           )
         )
       `)
-      .eq('id', studentId)
+      .eq('student_id', studentId)
+      .eq('is_active', true)
+      .limit(1)
       .single();
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: 'No community found. Please join a community first.' });
     }
 
-    if (!student.instructors) {
+    if (!community.instructors) {
       return res.status(400).json({ error: 'Student not assigned to any instructor' });
     }
 
@@ -377,18 +603,18 @@ export const getStudentCommunity = async (req, res) => {
         is_published,
         enrollments!enrollments_course_id_fkey (id)
       `)
-      .eq('instructor_id', student.instructor_id);
+      .eq('instructor_id', community.instructor_id);
 
     const publishedCourses = courses?.filter(c => c.is_published) || [];
     const totalStudents = new Set(courses?.flatMap(c => c.enrollments?.map(e => e.id)) || []).size;
 
-    const community = {
-      id: student.instructors.id,
-      name: student.instructors.business_name,
+    const communityResponse = {
+      id: community.instructors.id,
+      name: community.instructors.business_name,
       instructor: {
-        firstName: student.instructors.users.first_name,
-        lastName: student.instructors.users.last_name,
-        email: student.instructors.users.email
+        firstName: community.instructors.users.first_name,
+        lastName: community.instructors.users.last_name,
+        email: community.instructors.users.email
       },
       stats: {
         totalCourses: publishedCourses.length,
@@ -396,7 +622,7 @@ export const getStudentCommunity = async (req, res) => {
       }
     };
 
-    res.json(community);
+    res.json(communityResponse);
   } catch (error) {
     console.error('Get student community error:', error);
     res.status(500).json({ error: 'Internal server error' });

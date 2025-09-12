@@ -688,6 +688,7 @@ export const getPublicAboutPage = async (req, res) => {
 };
 
 // New endpoint for joining community
+// Update the existing joinCommunity function
 export const joinCommunity = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
@@ -711,32 +712,51 @@ export const joinCommunity = async (req, res) => {
     const instructorId = aboutPage.instructors.id;
 
     // Check if student is already part of this community
-    const { data: existingStudent } = await supabase
-      .from('students')
-      .select('id')
-      .eq('id', studentId)
+    const { data: existingMembership } = await supabase
+      .from('student_communities')
+      .select('id, is_active')
+      .eq('student_id', studentId)
       .eq('instructor_id', instructorId)
       .single();
 
-    if (existingStudent) {
-      return res.status(400).json({ error: 'Already a member of this community' });
+    if (existingMembership) {
+      if (existingMembership.is_active) {
+        return res.status(400).json({ error: 'Already a member of this community' });
+      } else {
+        // Reactivate membership
+        const { error: updateError } = await supabase
+          .from('student_communities')
+          .update({ is_active: true, joined_at: new Date().toISOString() })
+          .eq('id', existingMembership.id);
+
+        if (updateError) {
+          return res.status(400).json({ error: updateError.message });
+        }
+
+        return res.json({ 
+          message: 'Successfully rejoined the community!',
+          membershipId: existingMembership.id
+        });
+      }
     }
 
-    // Update student's instructor_id to join the community
-    const { data: updatedStudent, error: updateError } = await supabase
-      .from('students')
-      .update({ instructor_id: instructorId })
-      .eq('id', studentId)
+    // Create new community membership
+    const { data: membership, error: membershipError } = await supabase
+      .from('student_communities')
+      .insert({
+        student_id: studentId,
+        instructor_id: instructorId
+      })
       .select()
       .single();
 
-    if (updateError) {
-      return res.status(400).json({ error: updateError.message });
+    if (membershipError) {
+      return res.status(400).json({ error: membershipError.message });
     }
 
     res.json({ 
       message: 'Successfully joined the community!',
-      student: updatedStudent
+      membershipId: membership.id
     });
   } catch (error) {
     console.error('Join community error:', error);

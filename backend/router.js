@@ -31,16 +31,25 @@ import {
   joinCommunity
 } from './controllers/aboutPageController.js';
 import {
-  getAvailableCourses,
-  getEnrolledCourses,
-  enrollInCourse,
-  getStudentCourseContent,
-  updateLessonProgress,
-  getStudentCommunity
+  getStudentCommunities,          // NEW - replaces getStudentCommunity  
+  getCommunityAvailableCourses,   // NEW - specific community courses
+  getAvailableCourses,           // MODIFIED - now gets from all joined communities
+  getEnrolledCourses,            // SAME - but updated logic
+  enrollInCourse,                // MODIFIED - now requires community membership
+  getStudentCourseContent,       // SAME
+  updateLessonProgress,          // SAME
+  joinCommunity as joinCommunityStudent  // NEW - student version
 } from './controllers/studentCourseController.js';
 import { authenticateToken, requireRole } from './middleware/auth.js';
+import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
+
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  return createClient(supabaseUrl, supabaseKey);
+};
 
 // Auth routes
 router.post('/auth/signup/student', studentSignup);
@@ -63,18 +72,22 @@ router.post('/courses/:courseId/modules', authenticateToken, requireRole(['instr
 router.put('/modules/:moduleId', authenticateToken, requireRole(['instructor']), updateModule);
 router.delete('/modules/:moduleId', authenticateToken, requireRole(['instructor']), deleteModule);
 
-// Lesson routes (instructor only) - Note: these now handle file uploads
+// Lesson routes (instructor only)
 router.post('/modules/:moduleId/lessons', authenticateToken, requireRole(['instructor']), createLesson);
 router.put('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), updateLesson);
 router.delete('/lessons/:lessonId', authenticateToken, requireRole(['instructor']), deleteLesson);
 
-// Student Course routes (protected, student only)
-router.get('/student/community', authenticateToken, requireRole(['student']), getStudentCommunity);
-router.get('/student/courses/available', authenticateToken, requireRole(['student']), getAvailableCourses);
-router.get('/student/courses/enrolled', authenticateToken, requireRole(['student']), getEnrolledCourses);
-router.post('/student/courses/:courseId/enroll', authenticateToken, requireRole(['student']), enrollInCourse);
-router.get('/student/courses/:courseId/content', authenticateToken, requireRole(['student']), getStudentCourseContent);
-router.put('/student/lessons/:lessonId/progress', authenticateToken, requireRole(['student']), updateLessonProgress);
+// REPLACED: Student Community routes - Multi-community system
+router.get('/student/communities', authenticateToken, requireRole(['student']), getStudentCommunities); // REPLACES: /student/community
+router.get('/student/communities/:instructorId/courses', authenticateToken, requireRole(['student']), getCommunityAvailableCourses); // NEW
+router.post('/student/communities/join/:subdirectory', authenticateToken, requireRole(['student']), joinCommunityStudent); // NEW
+
+// MODIFIED: Student Course routes - Updated for multi-community
+router.get('/student/courses/available', authenticateToken, requireRole(['student']), getAvailableCourses); // MODIFIED - now from all communities
+router.get('/student/courses/enrolled', authenticateToken, requireRole(['student']), getEnrolledCourses); // SAME
+router.post('/student/courses/:courseId/enroll', authenticateToken, requireRole(['student']), enrollInCourse); // MODIFIED - requires community membership
+router.get('/student/courses/:courseId/content', authenticateToken, requireRole(['student']), getStudentCourseContent); // SAME
+router.put('/student/lessons/:lessonId/progress', authenticateToken, requireRole(['student']), updateLessonProgress); // SAME
 
 // Instructor about page routes (protected)
 router.get('/instructor/about-page', authenticateToken, requireRole(['instructor']), getAboutPage);
@@ -83,13 +96,11 @@ router.post('/instructor/about-page/intro-content', authenticateToken, requireRo
 router.put('/instructor/about-page/intro-content/:contentId', authenticateToken, requireRole(['instructor']), updateIntroContent);
 router.delete('/instructor/about-page/intro-content/:contentId', authenticateToken, requireRole(['instructor']), deleteIntroContent);
 
-// Public about page route
+// Public about page routes
 router.get('/public/about/:subdirectory', getPublicAboutPage);
+router.post('/public/about/:subdirectory/join', authenticateToken, requireRole(['student']), joinCommunity); // SAME - from aboutPageController
 
-// Join community route (for students)
-router.post('/public/about/:subdirectory/join', authenticateToken, requireRole(['student']), joinCommunity);
-
-// Add this temporary test endpoint to router.js
+// Test endpoint (keep for debugging)
 router.get('/test/intro-content-debug', authenticateToken, requireRole(['instructor']), async (req, res) => {
   try {
     const supabase = getSupabaseClient();
@@ -97,7 +108,6 @@ router.get('/test/intro-content-debug', authenticateToken, requireRole(['instruc
     
     console.log('Testing queries for instructor:', instructorId);
 
-    // Test the exact query from getAboutPage
     const { data: aboutPageWithContent, error: queryError } = await supabase
       .from('instructor_about_pages')
       .select(`
@@ -127,7 +137,7 @@ router.get('/test/intro-content-debug', authenticateToken, requireRole(['instruc
   }
 });
 
-// Test routes
+// Health check
 router.get('/health', (req, res) => {
   res.json({ 
     message: 'API is healthy!',

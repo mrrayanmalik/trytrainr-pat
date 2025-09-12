@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowRight,
   User,
@@ -9,19 +9,17 @@ import {
   BookOpen,
   Users,
   Award,
-  Building,
+  X, // ADD THIS FOR CANCEL BUTTON
 } from "lucide-react";
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom'; // ADD useLocation
+import { studentCourseService } from '../services/studentCourseService';
 
 export default function CleanStudentLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // ADD THIS
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [availableInstructors, setAvailableInstructors] = useState<Array<{id: string, business_name: string}>>([]);
-  const [loadingInstructors, setLoadingInstructors] = useState(true);
-  const [selectedInstructorId, setSelectedInstructorId] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -35,31 +33,60 @@ export default function CleanStudentLogin() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pendingCommunity, setPendingCommunity] = useState<any>(null);
 
+  // CHECK FOR PENDING COMMUNITY JOIN WITH SMART CLEANUP
   useEffect(() => {
-    const fetchInstructors = async () => {
-      try {
-        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${API_URL}/api/auth/instructors`);
-        
-        if (response.ok) {
-          const instructors = await response.json();
-          console.log('Fetched instructors:', instructors); // For debugging
-          setAvailableInstructors(instructors);
-        } else {
-          console.error('Failed to fetch instructors');
-          setAvailableInstructors([]);
+    const checkPendingCommunity = () => {
+      const pending = localStorage.getItem('pendingCommunityJoin');
+      if (pending) {
+        try {
+          const communityInfo = JSON.parse(pending);
+          
+          // Check if it's expired (30 minutes)
+          const now = Date.now();
+          const joinTime = communityInfo.timestamp || 0;
+          const THIRTY_MINUTES = 30 * 60 * 1000;
+          
+          if (now - joinTime > THIRTY_MINUTES) {
+            console.log('Pending community join expired, clearing...');
+            localStorage.removeItem('pendingCommunityJoin');
+            return;
+          }
+          
+          // Check if user came from community page or manually navigated
+          const referrer = document.referrer;
+          const cameFromCommunity = referrer.includes('/about/') || location.state?.fromCommunity;
+          
+          if (!cameFromCommunity && !communityInfo.timestamp) {
+            // If no timestamp and didn't come from community, it's probably stale
+            console.log('Stale pending community join, clearing...');
+            localStorage.removeItem('pendingCommunityJoin');
+            return;
+          }
+          
+          setPendingCommunity(communityInfo);
+        } catch (error) {
+          console.error('Error parsing pending community join:', error);
+          localStorage.removeItem('pendingCommunityJoin');
         }
-      } catch (error) {
-        console.error('Error fetching instructors:', error);
-        setAvailableInstructors([]);
-      } finally {
-        setLoadingInstructors(false);
       }
     };
 
-    fetchInstructors();
-  }, []);
+    checkPendingCommunity();
+
+    // Clear pending join when tab/window is closed
+    const handleBeforeUnload = () => {
+      // Only clear if user is leaving the site, not just refreshing
+      if (performance.navigation?.type === 1) { // TYPE_RELOAD
+        return; // Don't clear on refresh
+      }
+      localStorage.removeItem('pendingCommunityJoin');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [location]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -73,9 +100,6 @@ export default function CleanStudentLogin() {
       }
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match";
-      }
-      if (!selectedInstructorId && availableInstructors.length > 0) {
-        newErrors.instructor = "Please select an instructor";
       }
     }
 
@@ -95,6 +119,31 @@ export default function CleanStudentLogin() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ADD FUNCTION TO CANCEL PENDING JOIN
+  const cancelPendingJoin = () => {
+    localStorage.removeItem('pendingCommunityJoin');
+    setPendingCommunity(null);
+  };
+
+  const handlePendingCommunityJoin = async () => {
+    if (!pendingCommunity) return;
+
+    try {
+      console.log('Auto-joining community:', pendingCommunity.subdirectory);
+      await studentCourseService.joinCommunity(pendingCommunity.subdirectory);
+      
+      localStorage.removeItem('pendingCommunityJoin');
+      alert(`Successfully joined ${pendingCommunity.communityName}!`);
+      navigate('/student/community');
+      
+    } catch (error: any) {
+      console.error('Error auto-joining community:', error);
+      alert(`Welcome! You can join ${pendingCommunity.communityName} from your communities page.`);
+      localStorage.removeItem('pendingCommunityJoin');
+      navigate('/student/community');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -105,7 +154,6 @@ export default function CleanStudentLogin() {
 
     try {
       if (mode === 'signup') {
-        // STUDENT SIGNUP - Direct API call
         const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
         
         const response = await fetch(`${API_URL}/api/auth/signup/student`, {
@@ -118,7 +166,6 @@ export default function CleanStudentLogin() {
             lastName: formData.lastName,
             email: formData.email,
             password: formData.password,
-            selectedInstructorId: selectedInstructorId
           }),
         });
 
@@ -128,15 +175,23 @@ export default function CleanStudentLogin() {
           throw new Error(data.error || 'Signup failed');
         }
 
-        localStorage.setItem('token', data.token);
         console.log('Student signup successful:', data);
-        
-        // Force page refresh to trigger AuthContext check
-        window.location.href = '/dashboard-student';
-      } else {
-        // STUDENT LOGIN - Use AuthContext
         await login(formData.email, formData.password, 'student');
-        navigate('/dashboard-student');
+        
+        if (pendingCommunity) {
+          await handlePendingCommunityJoin();
+        } else {
+          navigate('/student');
+        }
+        
+      } else {
+        await login(formData.email, formData.password, 'student');
+        
+        if (pendingCommunity) {
+          await handlePendingCommunityJoin();
+        } else {
+          navigate('/student');
+        }
       }
     } catch (error: any) {
       console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
@@ -190,9 +245,9 @@ export default function CleanStudentLogin() {
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Community Support</h3>
+                  <h3 className="font-semibold">Multiple Communities</h3>
                   <p className="text-blue-200 text-sm">
-                    Learn alongside motivated peers
+                    Join learning communities from different instructors
                   </p>
                 </div>
               </div>
@@ -233,9 +288,32 @@ export default function CleanStudentLogin() {
                 <p className="text-gray-600">
                   {mode === "login"
                     ? "Continue your learning journey"
-                    : "Start your learning adventure"}
+                    : "Create your account and discover learning communities"}
                 </p>
               </div>
+
+              {/* UPDATED PENDING COMMUNITY JOIN INFO WITH CANCEL BUTTON */}
+              {pendingCommunity && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-green-800 text-sm font-medium mb-1">
+                        🎯 Ready to join {pendingCommunity.communityName}!
+                      </p>
+                      <p className="text-green-700 text-xs">
+                        {mode === 'signup' ? 'Create your account' : 'Sign in'} and we'll automatically add you to {pendingCommunity.instructorName}'s community.
+                      </p>
+                    </div>
+                    <button
+                      onClick={cancelPendingJoin}
+                      className="ml-2 text-green-600 hover:text-green-800 transition-colors"
+                      title="Cancel auto-join"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {errors.submit && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -300,48 +378,6 @@ export default function CleanStudentLogin() {
                         </p>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {/* Instructor Selection for Signup */}
-                {mode === "signup" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Your Instructor
-                    </label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <select
-                        value={selectedInstructorId}
-                        onChange={(e) => setSelectedInstructorId(e.target.value)}
-                        disabled={loadingInstructors}
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
-                          errors.instructor ? "border-red-300" : "border-gray-300"
-                        } ${loadingInstructors ? "opacity-50" : ""}`}
-                      >
-                        <option value="">
-                          {loadingInstructors 
-                            ? "Loading instructors..." 
-                            : availableInstructors.length > 0 
-                              ? "Choose an instructor..." 
-                              : "No instructors available"
-                          }
-                        </option>
-                        {availableInstructors.map((instructor) => (
-                          <option key={instructor.id} value={instructor.id}>
-                            {instructor.business_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {errors.instructor && (
-                      <p className="text-red-500 text-xs mt-1">{errors.instructor}</p>
-                    )}
-                    {!loadingInstructors && availableInstructors.length === 0 && (
-                      <p className="text-yellow-600 text-xs mt-1">
-                        No instructors available. Ask an instructor to create an account first.
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -418,7 +454,7 @@ export default function CleanStudentLogin() {
                       Confirm Password
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         value={formData.confirmPassword}
@@ -501,14 +537,28 @@ export default function CleanStudentLogin() {
                     </>
                   ) : (
                     <>
-                      {mode === "login"
-                        ? "Access My Courses"
-                        : "Create Student Account"}
+                      {pendingCommunity ? (
+                        mode === "login" ? `Sign in & Join` : `Create Account & Join`
+                      ) : (
+                        mode === "login" ? "Access My Courses" : "Create Student Account"
+                      )}
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </>
                   )}
                 </button>
               </form>
+
+              {/* Signup Note */}
+              {mode === "signup" && !pendingCommunity && (
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-blue-800 text-sm">
+                    <strong>📚 New Multi-Community Experience!</strong>
+                  </p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    After creating your account, you can discover and join learning communities from different instructors. No need to choose just one!
+                  </p>
+                </div>
+              )}
 
               {/* Toggle between login and signup */}
               <div className="mt-6 text-center">
@@ -532,7 +582,10 @@ export default function CleanStudentLogin() {
                 {/* Back to Home */}
                 <div className="mt-4">
                   <button
-                    onClick={() => (window.location.href = "/")}
+                    onClick={() => {
+                      localStorage.removeItem('pendingCommunityJoin');
+                      window.location.href = "/";
+                    }}
                     className="text-gray-500 hover:text-gray-700 text-sm font-medium"
                   >
                     ← Back to Home
@@ -541,7 +594,7 @@ export default function CleanStudentLogin() {
               </div>
 
               {/* Test Credentials Helper */}
-              {mode === "login" && (
+              {mode === "login" && !pendingCommunity && (
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-blue-800 text-sm font-medium mb-2">
                     🧪 Test Credentials:

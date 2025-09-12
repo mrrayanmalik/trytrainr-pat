@@ -84,7 +84,7 @@ const PublicAboutPage: React.FC = () => {
       if (user.role === 'student') {
         try {
           setJoiningCommunity(true);
-          await studentCourseService.joinCommunity(subdirectory!);
+          await studentCourseService.joinCommunityPublic(subdirectory!);
           alert('Successfully joined the community! Redirecting to your dashboard...');
           navigate('/student/community');
         } catch (error: any) {
@@ -97,8 +97,17 @@ const PublicAboutPage: React.FC = () => {
         alert('You need a student account to join this community');
       }
     } else {
-      navigate('/login/student');
-    }
+      // STORE THE COMMUNITY INFO FOR AUTO-JOIN AFTER LOGIN
+      localStorage.setItem('pendingCommunityJoin', JSON.stringify({
+      subdirectory: subdirectory,
+      communityName: aboutPageData?.title || 'this community',
+      instructorName: `${aboutPageData?.instructor.users.first_name} ${aboutPageData?.instructor.users.last_name}`,
+      timestamp: Date.now() // ADD THIS TIMESTAMP
+    }));
+    
+    // Redirect to student login with state indicating they came from community
+    navigate('/login/student', { state: { fromCommunity: true } });
+      }
   };
 
   if (loading) {

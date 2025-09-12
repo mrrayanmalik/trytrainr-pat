@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, User, Mail, Lock, Eye, EyeOff, Loader, CheckCircle, Star, Users } from 'lucide-react';
+import { ArrowRight, User, Mail, Lock, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CleanStudentSignup() {
@@ -16,28 +16,6 @@ export default function CleanStudentSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
-
-  // Mock educator data for the demo
-  const educatorData = {
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    businessName: 'Web Development Academy',
-    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200',
-    description: 'Learn modern web development with hands-on projects and real-world experience',
-    stats: {
-      students: 2847,
-      courses: 12,
-      rating: 4.9,
-      reviews: 1234
-    },
-    features: [
-      'Interactive video lessons',
-      'Live Q&A sessions',
-      'Community support',
-      'Project-based learning',
-      'Certificate of completion'
-    ]
-  };
 
   const validateForm = () => {
     const newErrors: any = {};
@@ -76,7 +54,6 @@ export default function CleanStudentSignup() {
           lastName: formData.lastName,
           email: formData.email,
           password: formData.password,
-          selectedInstructorId: null // Since this component doesn't have instructor selection
         }),
       });
 
@@ -92,7 +69,7 @@ export default function CleanStudentSignup() {
       console.log('Student signup successful:', data);
       
       // Navigate to student dashboard
-      navigate('/dashboard-student');
+      navigate('/student');
     } catch (error: any) {
       console.error('Signup failed:', error);
       setErrors({ submit: error.message || 'Signup failed. Please try again.' });
@@ -108,59 +85,47 @@ export default function CleanStudentSignup() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50">
       <div className="grid lg:grid-cols-2 min-h-screen">
-        {/* Left Side - Educator Info */}
+        {/* Left Side - Generic Info */}
         <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-8 lg:p-12 flex items-center justify-center text-white">
-          <div className="max-w-md w-full">
-            {/* Educator Profile */}
-            <div className="text-center mb-8">
-              <img
-                src={educatorData.avatar}
-                alt={`${educatorData.firstName} ${educatorData.lastName}`}
-                className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-white/20"
-              />
-              <h1 className="text-3xl font-bold mb-2">
-                Join {educatorData.firstName}'s Community
-              </h1>
-              <h2 className="text-xl text-purple-100 mb-4">
-                {educatorData.businessName}
-              </h2>
-              <p className="text-purple-100 leading-relaxed">
-                {educatorData.description}
-              </p>
+          <div className="max-w-md w-full text-center">
+            <div className="w-24 h-24 bg-white/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <span className="text-3xl">🎓</span>
             </div>
+            <h1 className="text-3xl font-bold mb-4">Join Learning Communities</h1>
+            <h2 className="text-xl text-purple-100 mb-6">Discover Amazing Instructors</h2>
+            <p className="text-purple-100 leading-relaxed mb-8">
+              Create your account and explore learning communities from top instructors. Join courses, connect with peers, and accelerate your learning journey.
+            </p>
 
-            {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold">{educatorData.stats.students.toLocaleString()}</div>
-                <div className="text-purple-100 text-sm">Students</div>
+                <div className="text-2xl font-bold">1000+</div>
+                <div className="text-purple-100 text-sm">Instructors</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold">{educatorData.stats.courses}</div>
+                <div className="text-2xl font-bold">5000+</div>
                 <div className="text-purple-100 text-sm">Courses</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold flex items-center justify-center">
-                  <Star className="w-5 h-5 mr-1 fill-current" />
-                  {educatorData.stats.rating}
-                </div>
-                <div className="text-purple-100 text-sm">Rating</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold">{educatorData.stats.reviews.toLocaleString()}</div>
-                <div className="text-purple-100 text-sm">Reviews</div>
               </div>
             </div>
 
-            {/* Features */}
             <div className="space-y-3">
               <h3 className="font-semibold text-lg mb-4">What you'll get:</h3>
-              {educatorData.features.map((feature: string, index: number) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
-                  <span className="text-purple-100">{feature}</span>
-                </div>
-              ))}
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
+                <span className="text-purple-100">Access to multiple communities</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
+                <span className="text-purple-100">Interactive learning experiences</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
+                <span className="text-purple-100">Connect with like-minded learners</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
+                <span className="text-purple-100">Certificates of completion</span>
+              </div>
             </div>
           </div>
         </div>
@@ -183,7 +148,7 @@ export default function CleanStudentSignup() {
                   <span className="text-white font-bold text-2xl">T</span>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-                <p className="text-gray-600">Join thousands of students learning with {educatorData.firstName}</p>
+                <p className="text-gray-600">Start your learning journey today</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -307,26 +272,16 @@ export default function CleanStudentSignup() {
                     </>
                   ) : (
                     <>
-                      Join {educatorData.businessName}
+                      Create Account
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}
                 </button>
-              </form>
 
-              {/* Trust Indicators */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center justify-center space-x-6 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <Users className="w-4 h-4 mr-1" />
-                    {educatorData.stats.students.toLocaleString()}+ students
-                  </div>
-                  <div className="flex items-center">
-                    <Star className="w-4 h-4 mr-1 text-yellow-400 fill-current" />
-                    {educatorData.stats.rating} rating
-                  </div>
-                </div>
-              </div>
+                {errors.submit && (
+                  <div className="text-red-500 text-sm text-center">{errors.submit}</div>
+                )}
+              </form>
             </div>
           </div>
         </div>

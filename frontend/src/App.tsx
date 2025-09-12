@@ -64,6 +64,7 @@ function App() {
             {/* Public routes */}
             <Route path="/" element={<AuthRedirect />} />
             <Route path="/about/:subdirectory" element={<PublicAboutPage />} />
+            
             {/* Auth routes - wrapped with PublicRoute */}
             <Route
               path="/login/instructor"
@@ -116,7 +117,7 @@ function App() {
               <Route path="settings" element={<InstructorSettings />} />
             </Route>
             
-            {/* Student Protected Routes */}
+            {/* Student Protected Routes - UPDATED FOR MULTI-COMMUNITY */}
             <Route
               path="/student"
               element={
@@ -127,7 +128,9 @@ function App() {
             >
               <Route index element={<Navigate to="courses" replace />} />
               <Route path="courses" element={<CleanStudentDashboard />} />
+              {/* UPDATED: Multi-community routes */}
               <Route path="community" element={<StudentCommunity />} />
+              <Route path="community/:instructorId" element={<StudentCommunity />} />
               <Route path="live-calls" element={<StudentLiveCalls />} />
               <Route path="progress" element={<StudentProgress />} />
               <Route path="settings" element={<StudentSettings />} />

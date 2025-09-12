@@ -27,6 +27,7 @@ export interface StudentCourse {
   instructor?: {
     firstName: string;
     lastName: string;
+    businessName?: string;
   };
   modules?: any[];
   lessonProgress?: { [lessonId: string]: { completed: boolean; watchTime: number } };
@@ -34,12 +35,15 @@ export interface StudentCourse {
 
 export interface Community {
   id: string;
+  instructorId: string;
   name: string;
+  subdirectory: string;
   instructor: {
     firstName: string;
     lastName: string;
     email: string;
   };
+  joinedAt: string;
   stats: {
     totalCourses: number;
     totalStudents: number;
@@ -47,16 +51,37 @@ export interface Community {
 }
 
 export const studentCourseService = {
-  // Get student's community info
-  async getCommunity(): Promise<Community> {
-    const response = await fetch(`${API_URL}/api/student/community`, {
+  // NEW: Get all communities a student has joined
+  async getCommunities(): Promise<Community[]> {
+    const response = await fetch(`${API_URL}/api/student/communities`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch community info');
+    if (!response.ok) throw new Error('Failed to fetch communities');
     return response.json();
   },
 
-  // Get available courses from student's instructor
+  // NEW: Get courses from a specific community
+  async getCommunityAvailableCourses(instructorId: string): Promise<StudentCourse[]> {
+    const response = await fetch(`${API_URL}/api/student/communities/${instructorId}/courses`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch community courses');
+    return response.json();
+  },
+
+  // NEW: Join a community
+  async joinCommunity(subdirectory: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/student/communities/join/${subdirectory}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to join community');
+    }
+  },
+
+  // MODIFIED: Get available courses from ALL communities
   async getAvailableCourses(): Promise<StudentCourse[]> {
     const response = await fetch(`${API_URL}/api/student/courses/available`, {
       headers: getAuthHeaders(),
@@ -65,7 +90,7 @@ export const studentCourseService = {
     return response.json();
   },
 
-  // Get student's enrolled courses
+  // SAME: Get student's enrolled courses
   async getEnrolledCourses(): Promise<StudentCourse[]> {
     const response = await fetch(`${API_URL}/api/student/courses/enrolled`, {
       headers: getAuthHeaders(),
@@ -74,7 +99,7 @@ export const studentCourseService = {
     return response.json();
   },
 
-  // Enroll in a course
+  // MODIFIED: Enroll in a course (now requires community membership)
   async enrollInCourse(courseId: string): Promise<void> {
     const response = await fetch(`${API_URL}/api/student/courses/${courseId}/enroll`, {
       method: 'POST',
@@ -86,7 +111,7 @@ export const studentCourseService = {
     }
   },
 
-  // Get course content for enrolled student
+  // SAME: Get course content for enrolled student
   async getCourseContent(courseId: string): Promise<StudentCourse> {
     const response = await fetch(`${API_URL}/api/student/courses/${courseId}/content`, {
       headers: getAuthHeaders(),
@@ -95,7 +120,7 @@ export const studentCourseService = {
     return response.json();
   },
 
-  // Update lesson progress
+  // SAME: Update lesson progress
   async updateLessonProgress(lessonId: string, completed: boolean, watchTime?: number): Promise<void> {
     const response = await fetch(`${API_URL}/api/student/lessons/${lessonId}/progress`, {
       method: 'PUT',
@@ -105,8 +130,8 @@ export const studentCourseService = {
     if (!response.ok) throw new Error('Failed to update lesson progress');
   },
 
-  // Join community
-  async joinCommunity(subdirectory: string): Promise<void> {
+  // NEW: Join community through public about page
+  async joinCommunityPublic(subdirectory: string): Promise<void> {
     const response = await fetch(`${API_URL}/api/public/about/${subdirectory}/join`, {
       method: 'POST',
       headers: getAuthHeaders(),

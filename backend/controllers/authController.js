@@ -18,11 +18,12 @@ const generateToken = (userId, role) => {
 };
 
 // Student Signup
+// Remove instructor selection from student signup
 export const studentSignup = async (req, res) => {
   try {
-    const supabase = getSupabaseClient(); // Create client here
+    const supabase = getSupabaseClient();
     
-    const { firstName, lastName, email, password, selectedInstructorId } = req.body;
+    const { firstName, lastName, email, password } = req.body; // Remove selectedInstructorId
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -59,12 +60,12 @@ export const studentSignup = async (req, res) => {
       return res.status(400).json({ error: userError.message });
     }
 
-    // Create student profile
+    // Create student profile without instructor_id
     const { error: studentError } = await supabase
         .from('students')
         .insert({
             user_id: user.id,
-            instructor_id: selectedInstructorId || null // Make it nullable
+            instructor_id: null // Always null now
         });
 
     if (studentError) {
